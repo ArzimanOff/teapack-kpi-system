@@ -1,0 +1,35 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: data-processing-service
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/teapack_kpi_db
+    username: teapack
+    password: teapack123
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        default_schema: processing
+
+  flyway:
+    enabled: true
+    schemas: processing
+    locations: classpath:db/migration
+    baseline-on-migrate: false
+    default-schema: processing
+    validate-on-migrate: false
+
+kpi-calculation:
+  url: http://localhost:8084
+
+logging:
+  level:
+    com.teapack.processing: DEBUG

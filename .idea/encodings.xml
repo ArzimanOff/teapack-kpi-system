@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="Encoding">
+    <file url="file://$PROJECT_DIR$/api-gateway/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/data-collection-service/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/data-processing-service/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/equipment-emulator/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/kpi-calculation-service/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/notification-service/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/reporting-service/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/user-management-service/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/user-management-service/src/main/java/com/teapack/users/UserManagementApplication.java" charset="UTF-8" />
+  </component>
+</project>

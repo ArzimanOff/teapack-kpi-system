@@ -1,0 +1,15 @@
+-- Создание схем для каждого сервиса
+CREATE SCHEMA IF NOT EXISTS users;
+CREATE SCHEMA IF NOT EXISTS collection;
+CREATE SCHEMA IF NOT EXISTS processing;
+CREATE SCHEMA IF NOT EXISTS kpi;
+CREATE SCHEMA IF NOT EXISTS reporting;
+CREATE SCHEMA IF NOT EXISTS notification;
+
+-- Права доступа
+GRANT ALL PRIVILEGES ON SCHEMA users TO teapack;
+GRANT ALL PRIVILEGES ON SCHEMA collection TO teapack;
+GRANT ALL PRIVILEGES ON SCHEMA processing TO teapack;
+GRANT ALL PRIVILEGES ON SCHEMA kpi TO teapack;
+GRANT ALL PRIVILEGES ON SCHEMA reporting TO teapack;
+GRANT ALL PRIVILEGES ON SCHEMA notification TO teapack;
