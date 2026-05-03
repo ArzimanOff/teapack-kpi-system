@@ -1,0 +1,11 @@
+package com.teapack.notification.repository;
+
+import com.teapack.notification.entity.Notification;
+import org.springframework.data.jpa.repository.JpaRepository;
+import java.util.List;
+
+public interface NotificationRepository extends JpaRepository<Notification, Long> {
+    List<Notification> findByShiftIdOrderByCreatedAtDesc(Long shiftId);
+    List<Notification> findByIsReadFalseOrderByCreatedAtDesc();
+    List<Notification> findByLineIdOrderByCreatedAtDesc(String lineId);
+}

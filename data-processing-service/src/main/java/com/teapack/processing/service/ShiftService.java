@@ -188,4 +188,8 @@ public class ShiftService {
         long seconds = Duration.between(start, end).getSeconds();
         return BigDecimal.valueOf(seconds).divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
     }
+
+    public List<DowntimeEvent> getDowntimeEvents(Long shiftId) {
+        return downtimeEventRepository.findByShiftIdOrderByStartTimeAsc(shiftId);
+    }
 }

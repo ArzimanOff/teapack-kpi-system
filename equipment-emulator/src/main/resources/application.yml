@@ -1,0 +1,20 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: equipment-emulator
+
+emulator:
+  line-id: LINE-01
+  interval-ms: 5000
+  nominal-speed: 150.0
+  temperature-base: 72.0
+  active: false
+
+data-collection:
+  url: http://localhost:8082
+
+logging:
+  level:
+    com.teapack.emulator: DEBUG

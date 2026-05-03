@@ -1,0 +1,35 @@
+server:
+  port: 8085
+
+spring:
+  application:
+    name: reporting-service
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/teapack_kpi_db
+    username: teapack
+    password: teapack123
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        default_schema: reporting
+
+  flyway:
+    enabled: true
+    schemas: reporting
+    locations: classpath:db/migration
+    baseline-on-migrate: false
+    default-schema: reporting
+    validate-on-migrate: false
+
+kpi-calculation:
+  url: http://localhost:8084
+
+logging:
+  level:
+    com.teapack.reporting: DEBUG
