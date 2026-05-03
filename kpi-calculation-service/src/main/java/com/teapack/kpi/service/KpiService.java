@@ -3,12 +3,15 @@ package com.teapack.kpi.service;
 import com.teapack.kpi.client.DataProcessingClient;
 import com.teapack.kpi.client.NotificationClient;
 import com.teapack.kpi.client.ReportingClient;
+import com.teapack.kpi.dto.KpiHistoryFilterRequest;
 import com.teapack.kpi.dto.KpiResultDto;
 import com.teapack.kpi.dto.ShiftDataDto;
 import com.teapack.kpi.entity.ShiftKpi;
 import com.teapack.kpi.repository.ShiftKpiRepository;
+import com.teapack.kpi.repository.ShiftKpiSpecifications;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Sort;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -75,6 +78,13 @@ public class KpiService {
 
     public List<ShiftKpi> getKpiByLine(String lineId) {
         return shiftKpiRepository.findByLineIdOrderByCalculatedAtDesc(lineId);
+    }
+
+    public List<ShiftKpi> findKpiHistory(KpiHistoryFilterRequest filter) {
+        return shiftKpiRepository.findAll(
+                ShiftKpiSpecifications.fromFilter(filter),
+                Sort.by(Sort.Direction.DESC, "calculatedAt")
+        );
     }
 
     private ShiftKpi mapToEntity(KpiResultDto dto) {

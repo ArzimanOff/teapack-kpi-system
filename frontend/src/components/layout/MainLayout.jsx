@@ -7,8 +7,11 @@ import {
   FileTextOutlined,
   LogoutOutlined,
   UserOutlined,
+  CalendarOutlined,
+  HistoryOutlined,
 } from '@ant-design/icons'
-import { clearAuth, getUser, getRole } from '../../utils/auth'
+import { clearAuth, getUser, getRole, hasRole } from '../../utils/auth'
+import { ROUTE_ACCESS } from '../../constants/access'
 
 const { Header, Sider, Content } = Layout
 const { Text } = Typography
@@ -26,23 +29,14 @@ function MainLayout() {
   const user = getUser()
   const role = getRole()
 
-  const menuItems = [
-    {
-      key: '/dashboard',
-      icon: <DashboardOutlined />,
-      label: 'Дашборд',
-    },
-    {
-      key: '/operator',
-      icon: <ControlOutlined />,
-      label: 'Оператор',
-    },
-    {
-      key: '/reports',
-      icon: <FileTextOutlined />,
-      label: 'Отчёты',
-    },
+  const allMenuItems = [
+    { key: '/dashboard',      icon: <DashboardOutlined />, label: 'Дашборд' },
+    { key: '/operator',       icon: <ControlOutlined />,   label: 'Оператор' },
+    { key: '/shifts/planned', icon: <CalendarOutlined />,  label: 'Запланированные смены' },
+    { key: '/shifts/history', icon: <HistoryOutlined />,   label: 'История смен' },
+    { key: '/reports',        icon: <FileTextOutlined />,  label: 'Отчёты' },
   ]
+  const menuItems = allMenuItems.filter(item => hasRole(ROUTE_ACCESS[item.key]))
 
   const handleLogout = () => {
     clearAuth()

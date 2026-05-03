@@ -6,6 +6,7 @@ import com.teapack.processing.entity.*;
 import com.teapack.processing.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -182,6 +183,26 @@ public class ShiftService {
 
     public List<Shift> getShiftsByLine(String lineId) {
         return shiftRepository.findByLineIdOrderByCreatedAtDesc(lineId);
+    }
+
+    public List<Shift> findShifts(ShiftFilterRequest filter) {
+        return shiftRepository.findAll(
+                ShiftSpecifications.fromFilter(filter),
+                Sort.by(Sort.Direction.DESC, "createdAt")
+        );
+    }
+
+    @Transactional
+    public Shift cancelPlannedShift(Long shiftId) {
+        Shift shift = getShiftOrThrow(shiftId);
+        if (!"PLANNED".equals(shift.getStatus())) {
+            throw new IllegalStateException(
+                    "Only PLANNED shifts can be cancelled, current status: " + shift.getStatus());
+        }
+        shift.setStatus("CANCELLED");
+        shift = shiftRepository.save(shift);
+        log.info("Cancelled planned shift: id={}", shiftId);
+        return shift;
     }
 
     private BigDecimal calculateDuration(LocalDateTime start, LocalDateTime end) {

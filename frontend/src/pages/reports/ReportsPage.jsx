@@ -1,22 +1,28 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import {
-  Card, Input, Button, Table, Typography,
+  Card, Select, Button, Table, Typography,
   Row, Col, Statistic, Tag, Space, Divider
 } from 'antd'
 import { SearchOutlined, ReloadOutlined } from '@ant-design/icons'
 import { getReportsByLine, getReportByShift, generateReport } from '../../api/reports'
 import { getKpiByShift } from '../../api/kpi'
+import { useLines } from '../../hooks/useLines'
 
-const { Title, Text } = Typography
+const { Title } = Typography
 
 function ReportsPage() {
-  const [lineId, setLineId] = useState('LINE-01')
+  const { options: lineOptions, lines } = useLines(true)
+  const [lineId, setLineId] = useState(undefined)
   const [reports, setReports] = useState([])
-  const [selectedReport, setSelectedReport] = useState(null)
   const [selectedKpi, setSelectedKpi] = useState(null)
   const [loading, setLoading] = useState(false)
 
+  useEffect(() => {
+    if (!lineId && lines.length > 0) setLineId(lines[0].code)
+  }, [lines, lineId])
+
   const loadReports = async () => {
+    if (!lineId) return
     setLoading(true)
     try {
       const res = await getReportsByLine(lineId)
@@ -30,11 +36,10 @@ function ReportsPage() {
 
   const loadDetail = async (shiftId) => {
     try {
-      const [reportRes, kpiRes] = await Promise.all([
+      const [, kpiRes] = await Promise.all([
         getReportByShift(shiftId),
         getKpiByShift(shiftId),
       ])
-      setSelectedReport(reportRes.data)
       setSelectedKpi(kpiRes.data)
     } catch (e) {
       console.error(e)
@@ -49,12 +54,18 @@ function ReportsPage() {
   const columns = [
     { title: 'ID смены', dataIndex: 'shiftId', key: 'shiftId' },
     { title: 'Линия', dataIndex: 'lineId', key: 'lineId' },
-    { title: 'OEE', dataIndex: 'oee', key: 'oee',
-      render: v => v ? `${(v * 100).toFixed(1)}%` : '—' },
-    { title: 'Статус', dataIndex: 'status', key: 'status',
-      render: s => <Tag color="green">{s}</Tag> },
-    { title: 'Дата', dataIndex: 'createdAt', key: 'createdAt',
-      render: t => new Date(t).toLocaleString('ru') },
+    {
+      title: 'OEE', dataIndex: 'oee', key: 'oee',
+      render: v => v ? `${(v * 100).toFixed(1)}%` : '—'
+    },
+    {
+      title: 'Статус', dataIndex: 'status', key: 'status',
+      render: s => <Tag color="green">{s}</Tag>
+    },
+    {
+      title: 'Дата', dataIndex: 'createdAt', key: 'createdAt',
+      render: t => new Date(t).toLocaleString('ru')
+    },
     {
       title: 'Действия', key: 'actions',
       render: (_, record) => (
@@ -77,8 +88,13 @@ function ReportsPage() {
 
       <Card style={{ marginBottom: 24 }}>
         <Space>
-          <Input value={lineId} onChange={e => setLineId(e.target.value)}
-            placeholder="LINE-01" style={{ width: 140 }} />
+          <Select
+            value={lineId}
+            onChange={setLineId}
+            options={lineOptions}
+            placeholder="Линия"
+            style={{ width: 280 }}
+          />
           <Button type="primary" icon={<SearchOutlined />} onClick={loadReports} loading={loading}>
             Загрузить отчёты
           </Button>

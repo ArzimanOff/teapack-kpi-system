@@ -2,15 +2,18 @@ package com.teapack.processing.controller;
 
 import com.teapack.processing.dto.CreateShiftRequest;
 import com.teapack.processing.dto.ShiftDataDto;
+import com.teapack.processing.dto.ShiftFilterRequest;
 import com.teapack.processing.entity.DowntimeEvent;
 import com.teapack.processing.entity.Shift;
 import com.teapack.processing.entity.ShiftAggregate;
 import com.teapack.processing.service.ShiftService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
@@ -33,6 +36,30 @@ public class ShiftController {
     @PostMapping("/{shiftId}/close")
     public ResponseEntity<Shift> closeShift(@PathVariable Long shiftId) {
         return ResponseEntity.ok(shiftService.closeShift(shiftId));
+    }
+
+    @DeleteMapping("/{shiftId}")
+    public ResponseEntity<Shift> cancelShift(@PathVariable Long shiftId) {
+        return ResponseEntity.ok(shiftService.cancelPlannedShift(shiftId));
+    }
+
+    @GetMapping
+    public ResponseEntity<List<Shift>> findShifts(
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String lineId,
+            @RequestParam(required = false) Long operatorId,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dateFrom,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dateTo
+    ) {
+        ShiftFilterRequest filter = new ShiftFilterRequest();
+        filter.setStatus(status);
+        filter.setLineId(lineId);
+        filter.setOperatorId(operatorId);
+        filter.setDateFrom(dateFrom);
+        filter.setDateTo(dateTo);
+        return ResponseEntity.ok(shiftService.findShifts(filter));
     }
 
     @GetMapping("/{shiftId}/data")

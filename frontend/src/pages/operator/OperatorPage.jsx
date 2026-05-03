@@ -1,17 +1,18 @@
 import React, { useState, useEffect } from 'react'
 import {
   Card, Button, Form, Input, Select, InputNumber,
-  Space, Tag, Typography, Row, Col, Statistic, Alert, Modal
+  Space, Tag, Typography, Row, Col, Statistic, Alert, Modal, message
 } from 'antd'
 import {
   PlayCircleOutlined, PauseCircleOutlined,
   StopOutlined, ExclamationCircleOutlined
 } from '@ant-design/icons'
+import { useSearchParams } from 'react-router-dom'
 import { createShift, startShift, closeShift, getShift, getShiftAggregate } from '../../api/shifts'
 import { sendOperatorEvent, startEmulator, stopEmulator } from '../../api/events'
+import { useLines } from '../../hooks/useLines'
 
 const { Title, Text } = Typography
-const { Option } = Select
 
 const DOWNTIME_REASONS = [
   'Плановое ТО', 'Поломка оборудования', 'Отсутствие сырья',
@@ -19,12 +20,49 @@ const DOWNTIME_REASONS = [
 ]
 
 function OperatorPage() {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const { options: lineOptions, lines } = useLines(true)
   const [shift, setShift] = useState(null)
   const [aggregate, setAggregate] = useState(null)
   const [loading, setLoading] = useState(false)
   const [createForm] = Form.useForm()
   const [scrapForm] = Form.useForm()
   const [downtimeForm] = Form.useForm()
+
+  const handleLineChange = (code) => {
+    const line = lines.find(l => l.code === code)
+    if (!line) return
+    const updates = {}
+    if (line.nominalSpeed != null) updates.nominalSpeed = Number(line.nominalSpeed)
+    const start = createForm.getFieldValue('plannedStart')
+    const end = createForm.getFieldValue('plannedEnd')
+    if (line.plannedOutputPerHour != null && start && end) {
+      const hours = (new Date(end) - new Date(start)) / 36e5
+      if (hours > 0) updates.plannedOutput = Math.round(line.plannedOutputPerHour * hours)
+    } else if (line.plannedOutputPerHour != null) {
+      updates.plannedOutput = line.plannedOutputPerHour * 8
+    }
+    createForm.setFieldsValue(updates)
+  }
+
+  useEffect(() => {
+    const shiftIdParam = searchParams.get('shiftId')
+    if (!shiftIdParam) return
+    const id = Number(shiftIdParam)
+    if (Number.isNaN(id)) return
+    if (shift?.id === id) return
+    getShift(id)
+      .then(res => {
+        setShift(res.data)
+        if (res.data.status !== 'PLANNED') {
+          message.info(`Смена #${id} уже в статусе ${res.data.status}`)
+        }
+      })
+      .catch(() => {
+        message.error(`Смена #${id} не найдена`)
+        setSearchParams({})
+      })
+  }, [searchParams])
 
   useEffect(() => {
     if (shift?.id && shift.status === 'ACTIVE') {
@@ -164,11 +202,11 @@ function OperatorPage() {
             <Row gutter={16}>
               <Col span={8}>
                 <Form.Item name="lineId" label="Линия" rules={[{ required: true }]}>
-                  <Select placeholder="Выберите линию">
-                    <Option value="LINE-01">LINE-01</Option>
-                    <Option value="LINE-02">LINE-02</Option>
-                    <Option value="LINE-03">LINE-03</Option>
-                  </Select>
+                  <Select
+                    placeholder="Выберите линию"
+                    options={lineOptions}
+                    onChange={handleLineChange}
+                  />
                 </Form.Item>
               </Col>
               <Col span={8}>
@@ -233,6 +271,11 @@ function OperatorPage() {
                         Завершить смену
                       </Button>
                     </>
+                  )}
+                  {(shift.status === 'CLOSED' || shift.status === 'CANCELLED') && (
+                    <Button onClick={() => { setShift(null); setSearchParams({}) }}>
+                      Создать новую смену
+                    </Button>
                   )}
                 </Space>
               </Col>

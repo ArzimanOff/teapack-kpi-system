@@ -2,11 +2,14 @@ package com.teapack.collection.controller;
 
 import com.teapack.collection.dto.EquipmentReadingDto;
 import com.teapack.collection.dto.OperatorEventDto;
+import com.teapack.collection.entity.EquipmentReading;
 import com.teapack.collection.service.DataCollectionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/collect")
@@ -16,19 +19,21 @@ public class DataCollectionController {
     private final DataCollectionService dataCollectionService;
 
     @PostMapping("/equipment")
-    public ResponseEntity<?> receiveEquipmentData(
+    public ResponseEntity<EquipmentReading> receiveEquipmentData(
             @Valid @RequestBody EquipmentReadingDto dto) {
-        var result = dataCollectionService.saveEquipmentReading(dto);
-        if (result == null) {
-            return ResponseEntity.badRequest().body("Invalid data rejected");
-        }
-        return ResponseEntity.ok(result);
+        return ResponseEntity.ok(dataCollectionService.saveEquipmentReading(dto));
     }
 
     @PostMapping("/operator-event")
     public ResponseEntity<?> receiveOperatorEvent(
             @Valid @RequestBody OperatorEventDto dto) {
-        var result = dataCollectionService.saveOperatorEvent(dto);
-        return ResponseEntity.ok(result);
+        return ResponseEntity.ok(dataCollectionService.saveOperatorEvent(dto));
+    }
+
+    @GetMapping("/readings/invalid")
+    public ResponseEntity<List<EquipmentReading>> findInvalidReadings(
+            @RequestParam(required = false) String lineId,
+            @RequestParam(defaultValue = "100") int limit) {
+        return ResponseEntity.ok(dataCollectionService.findInvalidReadings(lineId, limit));
     }
 }

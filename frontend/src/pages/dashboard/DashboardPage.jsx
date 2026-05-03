@@ -10,11 +10,9 @@ import {
 import { getKpiByLine } from '../../api/kpi'
 import { getNotificationsByShift } from '../../api/notifications'
 import { useWebSocket } from '../../hooks/useWebSocket'
+import { useLines } from '../../hooks/useLines'
 
 const { Title, Text } = Typography
-const { Option } = Select
-
-const LINES = ['LINE-01', 'LINE-02', 'LINE-03']
 
 const kpiColor = (value, threshold) =>
   value >= threshold ? '#52c41a' : value >= threshold * 0.8 ? '#faad14' : '#ff4d4f'
@@ -37,18 +35,25 @@ function KpiGauge({ title, value, threshold }) {
 }
 
 function DashboardPage() {
-  const [selectedLine, setSelectedLine] = useState('LINE-01')
+  const { options: lineOptions, lines } = useLines(true)
+  const [selectedLine, setSelectedLine] = useState(undefined)
   const [kpiList, setKpiList] = useState([])
   const [latestKpi, setLatestKpi] = useState(null)
   const [notifications, setNotifications] = useState([])
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (!selectedLine && lines.length > 0) {
+      setSelectedLine(lines[0].code)
+    }
+  }, [lines, selectedLine])
 
   const { connected } = useWebSocket(selectedLine, (data) => {
     setLatestKpi(data)
   })
 
   useEffect(() => {
-    loadKpi()
+    if (selectedLine) loadKpi()
   }, [selectedLine])
 
   const loadKpi = async () => {
@@ -96,9 +101,13 @@ function DashboardPage() {
               text={connected ? 'Online' : 'Offline'} />
           </Col>
           <Col>
-            <Select value={selectedLine} onChange={setSelectedLine} style={{ width: 140 }}>
-              {LINES.map(l => <Option key={l} value={l}>{l}</Option>)}
-            </Select>
+            <Select
+              value={selectedLine}
+              onChange={setSelectedLine}
+              style={{ width: 280 }}
+              options={lineOptions}
+              placeholder="Линия"
+            />
           </Col>
         </Row>
       </Row>

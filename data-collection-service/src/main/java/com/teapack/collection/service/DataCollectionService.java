@@ -9,10 +9,11 @@ import com.teapack.collection.repository.EquipmentReadingRepository;
 import com.teapack.collection.repository.OperatorEventRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -22,20 +23,11 @@ public class DataCollectionService {
     private final EquipmentReadingRepository equipmentReadingRepository;
     private final OperatorEventRepository operatorEventRepository;
     private final DataProcessingClient dataProcessingClient;
-
-    // Допустимые диапазоны для валидации
-    private static final BigDecimal TEMP_MIN = BigDecimal.valueOf(0);
-    private static final BigDecimal TEMP_MAX = BigDecimal.valueOf(150);
-    private static final BigDecimal SPEED_MIN = BigDecimal.valueOf(0);
-    private static final BigDecimal SPEED_MAX = BigDecimal.valueOf(500);
+    private final ValidationService validationService;
 
     @Transactional
     public EquipmentReading saveEquipmentReading(EquipmentReadingDto dto) {
-        // Валидация и фильтрация выбросов
-        if (!validateEquipmentReading(dto)) {
-            log.warn("Invalid equipment reading rejected: {}", dto);
-            return null;
-        }
+        ValidationService.ValidationResult validation = validationService.validate(dto);
 
         EquipmentReading entity = EquipmentReading.builder()
                 .lineId(dto.getLineId())
@@ -45,12 +37,20 @@ public class DataCollectionService {
                 .status(dto.getStatus())
                 .outputCount(dto.getOutputCount() != null ? dto.getOutputCount() : 0)
                 .shiftId(dto.getShiftId())
+                .isValid(validation.isValid())
+                .validationNote(validation.getNote())
                 .build();
 
         entity = equipmentReadingRepository.save(entity);
-        log.debug("Saved equipment reading: lineId={}, status={}", dto.getLineId(), dto.getStatus());
 
-        // Отправляем в data-processing-service асинхронно
+        if (!validation.isValid()) {
+            log.warn("Outlier reading flagged for line={}: {}", dto.getLineId(), validation.getNote());
+            // Невалидные показания не доходят до агрегации в processing-service
+            return entity;
+        }
+
+        log.debug("Saved valid reading: lineId={}, status={}", dto.getLineId(), dto.getStatus());
+
         try {
             dataProcessingClient.sendEquipmentReading(dto);
         } catch (Exception e) {
@@ -76,7 +76,6 @@ public class DataCollectionService {
         entity = operatorEventRepository.save(entity);
         log.debug("Saved operator event: shiftId={}, type={}", dto.getShiftId(), dto.getEventType());
 
-        // Отправляем в data-processing-service
         try {
             dataProcessingClient.sendOperatorEvent(dto);
         } catch (Exception e) {
@@ -86,21 +85,11 @@ public class DataCollectionService {
         return entity;
     }
 
-    private boolean validateEquipmentReading(EquipmentReadingDto dto) {
-        if (dto.getTemperature() != null) {
-            if (dto.getTemperature().compareTo(TEMP_MIN) < 0 ||
-                dto.getTemperature().compareTo(TEMP_MAX) > 0) {
-                log.warn("Temperature out of range: {}", dto.getTemperature());
-                return false;
-            }
+    public List<EquipmentReading> findInvalidReadings(String lineId, int limit) {
+        var pageable = PageRequest.of(0, Math.max(1, Math.min(limit, 500)));
+        if (lineId != null && !lineId.isBlank()) {
+            return equipmentReadingRepository.findByLineIdAndIsValidFalseOrderByTimestampDesc(lineId, pageable);
         }
-        if (dto.getLineSpeed() != null) {
-            if (dto.getLineSpeed().compareTo(SPEED_MIN) < 0 ||
-                dto.getLineSpeed().compareTo(SPEED_MAX) > 0) {
-                log.warn("Line speed out of range: {}", dto.getLineSpeed());
-                return false;
-            }
-        }
-        return true;
+        return equipmentReadingRepository.findByIsValidFalseOrderByTimestampDesc(pageable);
     }
 }

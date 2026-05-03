@@ -38,11 +38,18 @@ public class EquipmentReading {
     @Column(name = "shift_id")
     private Long shiftId;
 
+    @Column(name = "is_valid", nullable = false)
+    private Boolean isValid;
+
+    @Column(name = "validation_note")
+    private String validationNote;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
     @PrePersist
     public void prePersist() {
         this.createdAt = LocalDateTime.now();
+        if (this.isValid == null) this.isValid = true;
     }
 }

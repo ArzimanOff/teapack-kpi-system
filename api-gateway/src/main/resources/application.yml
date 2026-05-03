@@ -24,7 +24,7 @@ spring:
         - id: data-processing
           uri: http://localhost:8083
           predicates:
-            - Path=/api/shifts/**,/api/processing/**
+            - Path=/api/shifts/**,/api/processing/**,/api/lines/**
           filters:
             - StripPrefix=0
 
