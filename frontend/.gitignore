@@ -22,3 +22,14 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+/src/constants/access.js
+/src/utils/csv.js
+/src/pages/admin/InvalidReadingsPage.jsx
+/src/api/lines.js
+/src/constants/lines.js
+/src/pages/admin/LinesAdminPage.jsx
+/src/pages/shifts/PlannedShiftsPage.jsx
+/src/api/readings.js
+/src/components/RoleGuard.jsx
+/src/pages/shifts/ShiftHistoryPage.jsx
+/src/hooks/useLines.js
