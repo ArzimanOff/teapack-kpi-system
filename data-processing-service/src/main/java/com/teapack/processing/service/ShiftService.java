@@ -6,6 +6,8 @@ import com.teapack.processing.entity.*;
 import com.teapack.processing.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -61,6 +63,17 @@ public class ShiftService {
     @Transactional
     public Shift startShift(Long shiftId) {
         Shift shift = getShiftOrThrow(shiftId);
+        if (!"PLANNED".equals(shift.getStatus())) {
+            throw new IllegalStateException(
+                    "Only PLANNED shifts can be started, current status: " + shift.getStatus());
+        }
+        String lineId = shift.getLineId();
+        shiftRepository.findByLineIdAndStatus(lineId, "ACTIVE")
+                .ifPresent(other -> {
+                    throw new IllegalStateException(
+                            "Active shift already exists on line " + lineId +
+                                    " (id=" + other.getId() + ")");
+                });
         shift.setStatus("ACTIVE");
         shift.setActualStart(LocalDateTime.now());
         shift = shiftRepository.save(shift);
@@ -189,6 +202,13 @@ public class ShiftService {
         return shiftRepository.findAll(
                 ShiftSpecifications.fromFilter(filter),
                 Sort.by(Sort.Direction.DESC, "createdAt")
+        );
+    }
+
+    public Page<Shift> findShiftsPaged(ShiftFilterRequest filter, Pageable pageable) {
+        return shiftRepository.findAll(
+                ShiftSpecifications.fromFilter(filter),
+                pageable
         );
     }
 

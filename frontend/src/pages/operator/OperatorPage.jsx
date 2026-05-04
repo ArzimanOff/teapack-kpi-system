@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import {
-  Card, Button, Form, Input, Select, InputNumber,
+  Card, Button, Form, Input, Select, InputNumber, DatePicker,
   Space, Tag, Typography, Row, Col, Statistic, Alert, Modal, message
 } from 'antd'
 import {
@@ -37,7 +37,7 @@ function OperatorPage() {
     const start = createForm.getFieldValue('plannedStart')
     const end = createForm.getFieldValue('plannedEnd')
     if (line.plannedOutputPerHour != null && start && end) {
-      const hours = (new Date(end) - new Date(start)) / 36e5
+      const hours = (end.toDate() - start.toDate()) / 36e5
       if (hours > 0) updates.plannedOutput = Math.round(line.plannedOutputPerHour * hours)
     } else if (line.plannedOutputPerHour != null) {
       updates.plannedOutput = line.plannedOutputPerHour * 8
@@ -82,11 +82,12 @@ function OperatorPage() {
   const handleCreateShift = async (values) => {
     setLoading(true)
     try {
+      const toIso = (m) => m ? m.format('YYYY-MM-DDTHH:mm:ss') : null
       const res = await createShift({
         lineId: values.lineId,
         operatorId: 1,
-        plannedStart: values.plannedStart,
-        plannedEnd: values.plannedEnd,
+        plannedStart: toIso(values.plannedStart),
+        plannedEnd: toIso(values.plannedEnd),
         plannedOutput: values.plannedOutput,
         nominalSpeed: values.nominalSpeed,
       })
@@ -104,7 +105,7 @@ function OperatorPage() {
     try {
       const res = await startShift(shift.id)
       setShift(res.data)
-      await startEmulator(shift.id)
+      await startEmulator(shift.id, shift.lineId)
       loadAggregate()
     } catch (e) {
       Modal.error({ title: 'Ошибка', content: 'Не удалось запустить смену' })
@@ -210,13 +211,23 @@ function OperatorPage() {
                 </Form.Item>
               </Col>
               <Col span={8}>
-                <Form.Item name="plannedStart" label="Начало (ISO)" rules={[{ required: true }]}>
-                  <Input placeholder="2026-05-03T08:00:00" />
+                <Form.Item name="plannedStart" label="Начало смены" rules={[{ required: true }]}>
+                  <DatePicker
+                    showTime={{ format: 'HH:mm' }}
+                    format="YYYY-MM-DD HH:mm"
+                    style={{ width: '100%' }}
+                    placeholder="Выберите дату и время"
+                  />
                 </Form.Item>
               </Col>
               <Col span={8}>
-                <Form.Item name="plannedEnd" label="Конец (ISO)" rules={[{ required: true }]}>
-                  <Input placeholder="2026-05-03T16:00:00" />
+                <Form.Item name="plannedEnd" label="Конец смены" rules={[{ required: true }]}>
+                  <DatePicker
+                    showTime={{ format: 'HH:mm' }}
+                    format="YYYY-MM-DD HH:mm"
+                    style={{ width: '100%' }}
+                    placeholder="Выберите дату и время"
+                  />
                 </Form.Item>
               </Col>
               <Col span={8}>

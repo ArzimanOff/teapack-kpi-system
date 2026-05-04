@@ -9,6 +9,8 @@ import {
   UserOutlined,
   CalendarOutlined,
   HistoryOutlined,
+  SettingOutlined,
+  WarningOutlined,
 } from '@ant-design/icons'
 import { clearAuth, getUser, getRole, hasRole } from '../../utils/auth'
 import { ROUTE_ACCESS } from '../../constants/access'
@@ -35,6 +37,8 @@ function MainLayout() {
     { key: '/shifts/planned', icon: <CalendarOutlined />,  label: 'Запланированные смены' },
     { key: '/shifts/history', icon: <HistoryOutlined />,   label: 'История смен' },
     { key: '/reports',        icon: <FileTextOutlined />,  label: 'Отчёты' },
+    { key: '/admin/lines',    icon: <SettingOutlined />,   label: 'Линии (админ)' },
+    { key: '/admin/readings', icon: <WarningOutlined />,   label: 'Outlier-показания' },
   ]
   const menuItems = allMenuItems.filter(item => hasRole(ROUTE_ACCESS[item.key]))
 

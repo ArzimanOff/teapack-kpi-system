@@ -5,6 +5,7 @@ import com.teapack.notification.entity.Notification;
 import com.teapack.notification.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -16,22 +17,26 @@ public class NotificationController {
 
     private final NotificationService notificationService;
 
+    // Без @PreAuthorize: эндпоинт зовётся внутренне через Feign из kpi-calculation-service.
     @PostMapping("/check")
     public ResponseEntity<List<Notification>> check(@RequestBody KpiResultDto kpi) {
         return ResponseEntity.ok(notificationService.checkAndNotify(kpi));
     }
 
     @GetMapping("/unread")
+    @PreAuthorize("hasAnyRole('OPERATOR','TECHNOLOGIST','ADMIN')")
     public ResponseEntity<List<Notification>> getUnread() {
         return ResponseEntity.ok(notificationService.getUnread());
     }
 
     @GetMapping("/shift/{shiftId}")
+    @PreAuthorize("hasAnyRole('OPERATOR','TECHNOLOGIST','ADMIN')")
     public ResponseEntity<List<Notification>> getByShift(@PathVariable Long shiftId) {
         return ResponseEntity.ok(notificationService.getByShift(shiftId));
     }
 
     @PatchMapping("/{id}/read")
+    @PreAuthorize("hasAnyRole('OPERATOR','TECHNOLOGIST','ADMIN')")
     public ResponseEntity<?> markAsRead(@PathVariable Long id) {
         notificationService.markAsRead(id);
         return ResponseEntity.ok().build();

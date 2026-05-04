@@ -5,8 +5,13 @@ import com.teapack.kpi.dto.KpiResultDto;
 import com.teapack.kpi.entity.ShiftKpi;
 import com.teapack.kpi.service.KpiService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -26,17 +31,20 @@ public class KpiController {
     }
 
     @GetMapping("/shift/{shiftId}")
+    @PreAuthorize("hasAnyRole('OPERATOR','TECHNOLOGIST','ADMIN')")
     public ResponseEntity<KpiResultDto> getByShift(@PathVariable Long shiftId) {
         return ResponseEntity.ok(kpiService.getKpiByShift(shiftId));
     }
 
     @GetMapping("/line/{lineId}")
+    @PreAuthorize("hasAnyRole('OPERATOR','TECHNOLOGIST','ADMIN')")
     public ResponseEntity<List<ShiftKpi>> getByLine(@PathVariable String lineId) {
         return ResponseEntity.ok(kpiService.getKpiByLine(lineId));
     }
 
     @GetMapping("/history")
-    public ResponseEntity<List<ShiftKpi>> getHistory(
+    @PreAuthorize("hasAnyRole('TECHNOLOGIST','ADMIN')")
+    public ResponseEntity<Page<ShiftKpi>> getHistory(
             @RequestParam(required = false) String lineId,
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dateFrom,
@@ -45,7 +53,8 @@ public class KpiController {
             @RequestParam(required = false) BigDecimal oeeMin,
             @RequestParam(required = false) BigDecimal availabilityMin,
             @RequestParam(required = false) BigDecimal performanceMin,
-            @RequestParam(required = false) BigDecimal qualityMin
+            @RequestParam(required = false) BigDecimal qualityMin,
+            @PageableDefault(size = 20, sort = "calculatedAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
         KpiHistoryFilterRequest filter = new KpiHistoryFilterRequest();
         filter.setLineId(lineId);
@@ -55,6 +64,6 @@ public class KpiController {
         filter.setAvailabilityMin(availabilityMin);
         filter.setPerformanceMin(performanceMin);
         filter.setQualityMin(qualityMin);
-        return ResponseEntity.ok(kpiService.findKpiHistory(filter));
+        return ResponseEntity.ok(kpiService.findKpiHistoryPaged(filter, pageable));
     }
 }

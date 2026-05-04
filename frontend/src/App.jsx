@@ -1,22 +1,34 @@
-import React from 'react'
+import React, { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
+import { Spin } from 'antd'
 import { isAuthenticated } from './utils/auth'
 import LoginPage from './pages/login/LoginPage'
-import OperatorPage from './pages/operator/OperatorPage'
-import DashboardPage from './pages/dashboard/DashboardPage'
-import ReportsPage from './pages/reports/ReportsPage'
-import PlannedShiftsPage from './pages/shifts/PlannedShiftsPage'
-import ShiftHistoryPage from './pages/shifts/ShiftHistoryPage'
 import MainLayout from './components/layout/MainLayout'
 import RoleGuard from './components/RoleGuard'
 import { ROUTE_ACCESS } from './constants/access'
+
+const DashboardPage      = lazy(() => import('./pages/dashboard/DashboardPage'))
+const OperatorPage       = lazy(() => import('./pages/operator/OperatorPage'))
+const ReportsPage        = lazy(() => import('./pages/reports/ReportsPage'))
+const PlannedShiftsPage  = lazy(() => import('./pages/shifts/PlannedShiftsPage'))
+const ShiftHistoryPage   = lazy(() => import('./pages/shifts/ShiftHistoryPage'))
+const LinesAdminPage     = lazy(() => import('./pages/admin/LinesAdminPage'))
+const InvalidReadingsPage = lazy(() => import('./pages/admin/InvalidReadingsPage'))
 
 const PrivateRoute = ({ children }) => {
   return isAuthenticated() ? children : <Navigate to="/login" />
 }
 
+const PageFallback = () => (
+  <div style={{ display: 'flex', justifyContent: 'center', padding: 64 }}>
+    <Spin size="large" />
+  </div>
+)
+
 const guarded = (path, element) => (
-  <RoleGuard allowed={ROUTE_ACCESS[path]}>{element}</RoleGuard>
+  <RoleGuard allowed={ROUTE_ACCESS[path]}>
+    <Suspense fallback={<PageFallback />}>{element}</Suspense>
+  </RoleGuard>
 )
 
 function App() {
@@ -34,6 +46,8 @@ function App() {
         <Route path="shifts/planned" element={guarded('/shifts/planned', <PlannedShiftsPage />)} />
         <Route path="shifts/history" element={guarded('/shifts/history', <ShiftHistoryPage />)} />
         <Route path="reports" element={guarded('/reports', <ReportsPage />)} />
+        <Route path="admin/lines" element={guarded('/admin/lines', <LinesAdminPage />)} />
+        <Route path="admin/readings" element={guarded('/admin/readings', <InvalidReadingsPage />)} />
       </Route>
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>

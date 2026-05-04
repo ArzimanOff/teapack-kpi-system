@@ -15,11 +15,13 @@ public class EmulatorController {
     private final EmulatorService emulatorService;
 
     @PostMapping("/start")
-    public ResponseEntity<?> start(@RequestParam Long shiftId) {
-        emulatorService.start(shiftId);
+    public ResponseEntity<?> start(@RequestParam Long shiftId,
+                                   @RequestParam(required = false) String lineId) {
+        emulatorService.start(shiftId, lineId);
         return ResponseEntity.ok(Map.of(
                 "status", "started",
-                "shiftId", shiftId
+                "shiftId", shiftId,
+                "lineId", emulatorService.getCurrentLineId()
         ));
     }
 
@@ -41,7 +43,9 @@ public class EmulatorController {
                 "active", emulatorService.isActive(),
                 "status", emulatorService.getStatus(),
                 "shiftId", emulatorService.getCurrentShiftId() != null
-                        ? emulatorService.getCurrentShiftId() : "none"
+                        ? emulatorService.getCurrentShiftId() : "none",
+                "lineId", emulatorService.getCurrentLineId() != null
+                        ? emulatorService.getCurrentLineId() : "none"
         ));
     }
 }

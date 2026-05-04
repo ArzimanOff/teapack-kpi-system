@@ -11,6 +11,8 @@ import com.teapack.kpi.repository.ShiftKpiRepository;
 import com.teapack.kpi.repository.ShiftKpiSpecifications;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
@@ -84,6 +86,13 @@ public class KpiService {
         return shiftKpiRepository.findAll(
                 ShiftKpiSpecifications.fromFilter(filter),
                 Sort.by(Sort.Direction.DESC, "calculatedAt")
+        );
+    }
+
+    public Page<ShiftKpi> findKpiHistoryPaged(KpiHistoryFilterRequest filter, Pageable pageable) {
+        return shiftKpiRepository.findAll(
+                ShiftKpiSpecifications.fromFilter(filter),
+                pageable
         );
     }
 

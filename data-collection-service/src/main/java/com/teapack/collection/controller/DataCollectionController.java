@@ -7,6 +7,7 @@ import com.teapack.collection.service.DataCollectionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -25,12 +26,14 @@ public class DataCollectionController {
     }
 
     @PostMapping("/operator-event")
+    @PreAuthorize("hasAnyRole('OPERATOR','ADMIN')")
     public ResponseEntity<?> receiveOperatorEvent(
             @Valid @RequestBody OperatorEventDto dto) {
         return ResponseEntity.ok(dataCollectionService.saveOperatorEvent(dto));
     }
 
     @GetMapping("/readings/invalid")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<EquipmentReading>> findInvalidReadings(
             @RequestParam(required = false) String lineId,
             @RequestParam(defaultValue = "100") int limit) {
