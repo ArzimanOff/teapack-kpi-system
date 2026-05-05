@@ -2,6 +2,7 @@ package com.teapack.kpi.controller;
 
 import com.teapack.kpi.dto.KpiHistoryFilterRequest;
 import com.teapack.kpi.dto.KpiResultDto;
+import com.teapack.kpi.dto.LineSummaryDto;
 import com.teapack.kpi.entity.ShiftKpi;
 import com.teapack.kpi.service.KpiService;
 import lombok.RequiredArgsConstructor;
@@ -40,6 +41,19 @@ public class KpiController {
     @PreAuthorize("hasAnyRole('OPERATOR','TECHNOLOGIST','ADMIN')")
     public ResponseEntity<List<ShiftKpi>> getByLine(@PathVariable String lineId) {
         return ResponseEntity.ok(kpiService.getKpiByLine(lineId));
+    }
+
+    @GetMapping("/line/{lineId}/summary")
+    @PreAuthorize("hasAnyRole('OPERATOR','TECHNOLOGIST','ADMIN')")
+    public ResponseEntity<LineSummaryDto> getLineSummary(
+            @PathVariable String lineId,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dateFrom,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dateTo,
+            @RequestParam(name = "limit", defaultValue = "20") int limit
+    ) {
+        return ResponseEntity.ok(kpiService.getLineSummary(lineId, dateFrom, dateTo, limit));
     }
 
     @GetMapping("/history")

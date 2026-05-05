@@ -8,3 +8,9 @@ export const getNotificationsByShift = (shiftId) =>
 
 export const markAsRead = (id) =>
   client.patch(`/api/notifications/${id}/read`)
+
+export const markAllRead = () =>
+  client.patch('/api/notifications/read-all')
+
+export const getUnreadCount = () =>
+  client.get('/api/notifications/unread/count')

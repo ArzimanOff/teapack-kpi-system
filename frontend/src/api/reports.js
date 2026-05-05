@@ -8,3 +8,6 @@ export const getReportsByLine = (lineId) =>
 
 export const generateReport = (shiftId) =>
   client.post(`/api/reports/generate/${shiftId}`)
+
+export const exportShiftCsv = (shiftId) =>
+  client.get(`/api/reports/${shiftId}/csv`, { responseType: 'blob' })

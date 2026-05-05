@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react'
 import {
   Card, Select, Button, Table, Typography,
-  Row, Col, Statistic, Tag, Space, Divider
+  Row, Col, Statistic, Tag, Space, Divider, message
 } from 'antd'
-import { SearchOutlined, ReloadOutlined } from '@ant-design/icons'
-import { getReportsByLine, getReportByShift, generateReport } from '../../api/reports'
+import { SearchOutlined, ReloadOutlined, DownloadOutlined } from '@ant-design/icons'
+import { getReportsByLine, getReportByShift, generateReport, exportShiftCsv } from '../../api/reports'
 import { getKpiByShift } from '../../api/kpi'
 import { useLines } from '../../hooks/useLines'
 
@@ -51,6 +51,22 @@ function ReportsPage() {
     await loadDetail(shiftId)
   }
 
+  const handleDownload = async (shiftId) => {
+    try {
+      const res = await exportShiftCsv(shiftId)
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: 'text/csv' }))
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `shift-${shiftId}-report.csv`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(url)
+    } catch (e) {
+      message.error('Не удалось скачать отчёт')
+    }
+  }
+
   const columns = [
     { title: 'ID смены', dataIndex: 'shiftId', key: 'shiftId' },
     { title: 'Линия', dataIndex: 'lineId', key: 'lineId' },
@@ -76,6 +92,10 @@ function ReportsPage() {
           <Button size="small" icon={<ReloadOutlined />}
             onClick={() => handleGenerate(record.shiftId)}>
             Перегенерировать
+          </Button>
+          <Button size="small" icon={<DownloadOutlined />}
+            onClick={() => handleDownload(record.shiftId)}>
+            CSV
           </Button>
         </Space>
       )

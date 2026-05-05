@@ -137,7 +137,7 @@ function OperatorPage() {
           reason: values.reason,
           operatorId: 1,
         })
-        await stopEmulator()
+        await stopEmulator(shift.id)
         downtimeForm.resetFields()
       }
     })
@@ -174,7 +174,7 @@ function OperatorPage() {
       onOk: async () => {
         setLoading(true)
         try {
-          await stopEmulator()
+          await stopEmulator(shift.id)
           const res = await closeShift(shift.id)
           setShift(res.data)
         } catch (e) {

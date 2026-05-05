@@ -17,7 +17,7 @@ function LoginPage() {
     setError(null)
     try {
       const res = await login(values.username, values.password)
-      setAuth(res.data.token, res.data.username, res.data.role)
+      setAuth(res.data.token, res.data.username, res.data.role, res.data.refreshToken)
       navigate('/dashboard')
     } catch (e) {
       setError('Неверный логин или пароль')

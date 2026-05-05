@@ -11,9 +11,13 @@ const DashboardPage      = lazy(() => import('./pages/dashboard/DashboardPage'))
 const OperatorPage       = lazy(() => import('./pages/operator/OperatorPage'))
 const ReportsPage        = lazy(() => import('./pages/reports/ReportsPage'))
 const PlannedShiftsPage  = lazy(() => import('./pages/shifts/PlannedShiftsPage'))
+const ActiveShiftsPage   = lazy(() => import('./pages/shifts/ActiveShiftsPage'))
 const ShiftHistoryPage   = lazy(() => import('./pages/shifts/ShiftHistoryPage'))
 const LinesAdminPage     = lazy(() => import('./pages/admin/LinesAdminPage'))
 const InvalidReadingsPage = lazy(() => import('./pages/admin/InvalidReadingsPage'))
+const UsersAdminPage     = lazy(() => import('./pages/admin/UsersAdminPage'))
+const AuditPage          = lazy(() => import('./pages/admin/AuditPage'))
+const EmulatorAdminPage  = lazy(() => import('./pages/admin/EmulatorAdminPage'))
 
 const PrivateRoute = ({ children }) => {
   return isAuthenticated() ? children : <Navigate to="/login" />
@@ -44,10 +48,14 @@ function App() {
         <Route path="dashboard" element={guarded('/dashboard', <DashboardPage />)} />
         <Route path="operator" element={guarded('/operator', <OperatorPage />)} />
         <Route path="shifts/planned" element={guarded('/shifts/planned', <PlannedShiftsPage />)} />
+        <Route path="shifts/active" element={guarded('/shifts/active', <ActiveShiftsPage />)} />
         <Route path="shifts/history" element={guarded('/shifts/history', <ShiftHistoryPage />)} />
         <Route path="reports" element={guarded('/reports', <ReportsPage />)} />
         <Route path="admin/lines" element={guarded('/admin/lines', <LinesAdminPage />)} />
         <Route path="admin/readings" element={guarded('/admin/readings', <InvalidReadingsPage />)} />
+        <Route path="admin/users" element={guarded('/admin/users', <UsersAdminPage />)} />
+        <Route path="admin/audit" element={guarded('/admin/audit', <AuditPage />)} />
+        <Route path="admin/emulator" element={guarded('/admin/emulator', <EmulatorAdminPage />)} />
       </Route>
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>

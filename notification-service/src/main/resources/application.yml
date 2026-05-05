@@ -27,13 +27,9 @@ spring:
     default-schema: notification
     validate-on-migrate: false
 
-# Пороговые значения KPI для уведомлений
-kpi:
-  thresholds:
-    oee-min: 0.65
-    availability-min: 0.80
-    performance-min: 0.75
-    quality-min: 0.95
+# Пороговые значения KPI больше не задаются здесь —
+# хранятся в notification.kpi_thresholds (см. V2-миграцию),
+# меняются через PUT /api/thresholds (роли TECHNOLOGIST/ADMIN).
 
 jwt:
   secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970

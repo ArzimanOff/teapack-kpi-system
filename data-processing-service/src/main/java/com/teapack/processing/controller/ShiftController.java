@@ -75,26 +75,7 @@ public class ShiftController {
 
     @GetMapping("/{shiftId}/data")
     public ResponseEntity<ShiftDataDto> getShiftData(@PathVariable Long shiftId) {
-        Shift shift = shiftService.getShiftOrThrow(shiftId);
-        ShiftAggregate aggregate = shiftService.getShiftAggregate(shiftId);
-        List<DowntimeEvent> downtimes = shiftService.getDowntimeEvents(shiftId);
-
-        ShiftDataDto dto = new ShiftDataDto();
-        dto.setShiftId(shift.getId());
-        dto.setLineId(shift.getLineId());
-        dto.setPlannedStart(shift.getPlannedStart());
-        dto.setPlannedEnd(shift.getPlannedEnd());
-        dto.setActualStart(shift.getActualStart());
-        dto.setActualEnd(shift.getActualEnd());
-        dto.setPlannedOutput(shift.getPlannedOutput());
-        dto.setNominalSpeed(shift.getNominalSpeed());
-        dto.setTotalOutput(aggregate.getTotalOutput());
-        dto.setGoodOutput(aggregate.getGoodOutput());
-        dto.setScrapCount(aggregate.getScrapCount());
-        dto.setDowntimeMinutes(aggregate.getDowntimeMinutes());
-        dto.setAvgSpeed(aggregate.getAvgSpeed());
-        dto.setNumberOfStops(downtimes.size());
-        return ResponseEntity.ok(dto);
+        return ResponseEntity.ok(shiftService.buildShiftData(shiftId));
     }
 
     @GetMapping("/{shiftId}")

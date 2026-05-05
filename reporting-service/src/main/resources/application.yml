@@ -17,7 +17,7 @@ spring:
     show-sql: false
     properties:
       hibernate:
-        default_schema: reporting
+        default_schema: reportingcd
 
   flyway:
     enabled: true

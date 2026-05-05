@@ -1,11 +1,12 @@
 package com.teapack.notification.service;
 
 import com.teapack.notification.dto.KpiResultDto;
+import com.teapack.notification.entity.KpiThresholds;
 import com.teapack.notification.entity.Notification;
 import com.teapack.notification.repository.NotificationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,22 +20,17 @@ import java.util.List;
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
-
-    @Value("${kpi.thresholds.oee-min}")
-    private BigDecimal oeeMin;
-
-    @Value("${kpi.thresholds.availability-min}")
-    private BigDecimal availabilityMin;
-
-    @Value("${kpi.thresholds.performance-min}")
-    private BigDecimal performanceMin;
-
-    @Value("${kpi.thresholds.quality-min}")
-    private BigDecimal qualityMin;
+    private final SimpMessagingTemplate messagingTemplate;
+    private final KpiThresholdsService thresholdsService;
 
     @Transactional
     public List<Notification> checkAndNotify(KpiResultDto kpi) {
         List<Notification> notifications = new ArrayList<>();
+        KpiThresholds t = thresholdsService.get();
+        BigDecimal oeeMin = t.getOeeMin();
+        BigDecimal availabilityMin = t.getAvailabilityMin();
+        BigDecimal performanceMin = t.getPerformanceMin();
+        BigDecimal qualityMin = t.getQualityMin();
 
         if (kpi.getOee() != null && kpi.getOee().compareTo(oeeMin) < 0) {
             notifications.add(createNotification(kpi, "OEE_LOW", "OEE",
@@ -69,11 +65,31 @@ public class NotificationService {
         }
 
         if (!notifications.isEmpty()) {
-            notificationRepository.saveAll(notifications);
-            log.info("Created {} notifications for shift: {}", notifications.size(), kpi.getShiftId());
+            List<Notification> saved = notificationRepository.saveAll(notifications);
+            log.info("Created {} notifications for shift: {}", saved.size(), kpi.getShiftId());
+            try {
+                // Push в общий канал — фронтовый bell подписывается у любого пользователя
+                messagingTemplate.convertAndSend("/topic/notifications", saved);
+            } catch (Exception e) {
+                log.warn("Failed to push notifications via WS: {}", e.getMessage());
+            }
+            return saved;
         }
 
         return notifications;
+    }
+
+    @Transactional
+    public int markAllRead() {
+        int updated = notificationRepository.markAllRead();
+        try {
+            messagingTemplate.convertAndSend("/topic/notifications/read-all", updated);
+        } catch (Exception ignored) {}
+        return updated;
+    }
+
+    public long countUnread() {
+        return notificationRepository.countByIsReadFalse();
     }
 
     public List<Notification> getUnread() {

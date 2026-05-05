@@ -5,6 +5,7 @@ import com.teapack.kpi.client.NotificationClient;
 import com.teapack.kpi.client.ReportingClient;
 import com.teapack.kpi.dto.KpiHistoryFilterRequest;
 import com.teapack.kpi.dto.KpiResultDto;
+import com.teapack.kpi.dto.LineSummaryDto;
 import com.teapack.kpi.dto.ShiftDataDto;
 import com.teapack.kpi.entity.ShiftKpi;
 import com.teapack.kpi.repository.ShiftKpiRepository;
@@ -12,12 +13,16 @@ import com.teapack.kpi.repository.ShiftKpiSpecifications;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Slf4j
@@ -94,6 +99,56 @@ public class KpiService {
                 ShiftKpiSpecifications.fromFilter(filter),
                 pageable
         );
+    }
+
+    public LineSummaryDto getLineSummary(String lineId, LocalDateTime from,
+                                         LocalDateTime to, int recentLimit) {
+        Object[] row = shiftKpiRepository.aggregateByLine(lineId, from, to);
+        // JPA возвращает Object[] с одной агрегатной строкой
+        Object[] r = row != null && row.length == 1 && row[0] instanceof Object[]
+                ? (Object[]) row[0] : row;
+
+        LineSummaryDto dto = new LineSummaryDto();
+        dto.setLineId(lineId);
+        dto.setShifts(asLong(r[0]));
+        dto.setAvgOee(asScaled(r[1], 4));
+        dto.setAvgAvailability(asScaled(r[2], 4));
+        dto.setAvgPerformance(asScaled(r[3], 4));
+        dto.setAvgQuality(asScaled(r[4], 4));
+        dto.setTotalOutput(asLong(r[5]));
+        dto.setGoodOutput(asLong(r[6]));
+        dto.setScrapCount(asLong(r[7]));
+        dto.setTotalDowntime(asScaled(r[8], 2));
+        dto.setTotalStops(asLong(r[9]));
+        dto.setFirstCalculatedAt(asDate(r[10]));
+        dto.setLastCalculatedAt(asDate(r[11]));
+
+        Pageable top = PageRequest.of(0, Math.max(1, recentLimit));
+        List<ShiftKpi> recent = (from != null || to != null)
+                ? shiftKpiRepository.findByLineIdAndCalculatedAtBetweenOrderByCalculatedAtDesc(
+                        lineId,
+                        from != null ? from : LocalDateTime.of(1970, 1, 1, 0, 0),
+                        to != null ? to : LocalDateTime.now().plusYears(100),
+                        top)
+                : shiftKpiRepository.findByLineIdOrderByCalculatedAtDesc(lineId, top);
+        dto.setRecent(recent);
+        return dto;
+    }
+
+    private long asLong(Object v) {
+        if (v == null) return 0L;
+        if (v instanceof Number n) return n.longValue();
+        return Long.parseLong(v.toString());
+    }
+
+    private BigDecimal asScaled(Object v, int scale) {
+        if (v == null) return null;
+        BigDecimal bd = (v instanceof BigDecimal bdv) ? bdv : new BigDecimal(v.toString());
+        return bd.setScale(scale, RoundingMode.HALF_UP);
+    }
+
+    private LocalDateTime asDate(Object v) {
+        return v instanceof LocalDateTime ld ? ld : null;
     }
 
     private ShiftKpi mapToEntity(KpiResultDto dto) {

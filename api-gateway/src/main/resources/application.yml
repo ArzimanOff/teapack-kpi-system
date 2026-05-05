@@ -10,7 +10,7 @@ spring:
         - id: user-management
           uri: http://localhost:8087
           predicates:
-            - Path=/api/auth/**
+            - Path=/api/auth/**,/api/users/**
           filters:
             - StripPrefix=0
 
@@ -24,7 +24,7 @@ spring:
         - id: data-processing
           uri: http://localhost:8083
           predicates:
-            - Path=/api/shifts/**,/api/processing/**,/api/lines/**
+            - Path=/api/shifts/**,/api/processing/**,/api/lines/**,/api/audit/**
           filters:
             - StripPrefix=0
 
@@ -45,7 +45,7 @@ spring:
         - id: notification
           uri: http://localhost:8086
           predicates:
-            - Path=/api/notifications/**
+            - Path=/api/notifications/**,/api/thresholds/**
           filters:
             - StripPrefix=0
 

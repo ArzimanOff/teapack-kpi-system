@@ -41,4 +41,17 @@ public class NotificationController {
         notificationService.markAsRead(id);
         return ResponseEntity.ok().build();
     }
+
+    @PatchMapping("/read-all")
+    @PreAuthorize("hasAnyRole('OPERATOR','TECHNOLOGIST','ADMIN')")
+    public ResponseEntity<?> markAllRead() {
+        int updated = notificationService.markAllRead();
+        return ResponseEntity.ok(java.util.Map.of("updated", updated));
+    }
+
+    @GetMapping("/unread/count")
+    @PreAuthorize("hasAnyRole('OPERATOR','TECHNOLOGIST','ADMIN')")
+    public ResponseEntity<?> countUnread() {
+        return ResponseEntity.ok(java.util.Map.of("count", notificationService.countUnread()));
+    }
 }

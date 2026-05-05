@@ -1,8 +1,11 @@
 package com.teapack.reporting.controller;
 
 import com.teapack.reporting.entity.Report;
+import com.teapack.reporting.service.CsvReportService;
 import com.teapack.reporting.service.ReportingService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -15,6 +18,7 @@ import java.util.List;
 public class ReportingController {
 
     private final ReportingService reportingService;
+    private final CsvReportService csvReportService;
 
     // Без @PreAuthorize: эндпоинт зовётся из kpi-calculation Feign'ом при close смены.
     // Внешний доступ через gateway всё равно требует валидный JWT.
@@ -33,5 +37,16 @@ public class ReportingController {
     @PreAuthorize("hasAnyRole('TECHNOLOGIST','ADMIN')")
     public ResponseEntity<List<Report>> getByLine(@PathVariable String lineId) {
         return ResponseEntity.ok(reportingService.getReportsByLine(lineId));
+    }
+
+    @GetMapping(value = "/{shiftId}/csv", produces = "text/csv;charset=UTF-8")
+    @PreAuthorize("hasAnyRole('TECHNOLOGIST','ADMIN')")
+    public ResponseEntity<byte[]> exportShiftCsv(@PathVariable Long shiftId) {
+        byte[] body = csvReportService.renderShiftReport(shiftId);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.parseMediaType("text/csv;charset=UTF-8"));
+        headers.setContentDispositionFormData("attachment",
+                "shift-" + shiftId + "-report.csv");
+        return ResponseEntity.ok().headers(headers).body(body);
     }
 }

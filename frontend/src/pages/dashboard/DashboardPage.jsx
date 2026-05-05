@@ -1,16 +1,19 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import {
-  Card, Row, Col, Statistic, Select, Typography, Tabs,
+  Card, Row, Col, Statistic, Select, Typography, Tabs, Modal, message, Button,
   Badge, Alert, Spin, Progress, Table, Tag, Empty, Space, Divider, Descriptions
 } from 'antd'
+import { StopOutlined, ExclamationCircleOutlined } from '@ant-design/icons'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, BarChart, Bar, Legend
 } from 'recharts'
-import { getKpiByLine } from '../../api/kpi'
-import { findShifts, getShiftData } from '../../api/shifts'
+import { getLineSummary } from '../../api/kpi'
+import { findShifts, getShiftData, closeShift } from '../../api/shifts'
+import { stopEmulator } from '../../api/events'
 import { getNotificationsByShift } from '../../api/notifications'
 import { useWebSocket } from '../../hooks/useWebSocket'
+import { useAggregateSocket } from '../../hooks/useAggregateSocket'
 import { useLines } from '../../hooks/useLines'
 
 const { Title, Text } = Typography
@@ -43,7 +46,34 @@ function OnlineShiftPanel({ lineId, latestKpi, connected }) {
   const [shift, setShift] = useState(null)
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [closing, setClosing] = useState(false)
   const [error, setError] = useState(null)
+
+  const handleCloseShift = () => {
+    if (!shift?.id) return
+    Modal.confirm({
+      title: `Закрыть смену #${shift.id}?`,
+      icon: <ExclamationCircleOutlined />,
+      content: 'После закрытия данные будут заблокированы и рассчитаются KPI.',
+      okText: 'Закрыть смену',
+      okButtonProps: { danger: true },
+      cancelText: 'Отмена',
+      onOk: async () => {
+        setClosing(true)
+        try {
+          try { await stopEmulator(shift.id) } catch (e) {}
+          await closeShift(shift.id)
+          message.success(`Смена #${shift.id} закрыта`)
+          setShift(null)
+          setData(null)
+        } catch (e) {
+          message.error('Не удалось закрыть смену')
+        } finally {
+          setClosing(false)
+        }
+      }
+    })
+  }
 
   const loadActive = async () => {
     if (!lineId) return
@@ -72,16 +102,10 @@ function OnlineShiftPanel({ lineId, latestKpi, connected }) {
     loadActive()
   }, [lineId])
 
-  useEffect(() => {
-    if (!shift?.id) return
-    const interval = setInterval(async () => {
-      try {
-        const d = await getShiftData(shift.id)
-        setData(d.data)
-      } catch (e) {}
-    }, 5000)
-    return () => clearInterval(interval)
-  }, [shift?.id])
+  // Live-push агрегатов через WebSocket; polling больше не нужен
+  const { connected: aggConnected } = useAggregateSocket(shift?.id, (payload) => {
+    if (payload?.shiftId === shift?.id) setData(payload)
+  })
 
   if (loading && !shift) return <Spin size="large" />
   if (error) return <Alert type="error" message={error} />
@@ -127,8 +151,21 @@ function OnlineShiftPanel({ lineId, latestKpi, connected }) {
             </Space>
           </Col>
           <Col>
-            <Badge status={connected ? 'success' : 'error'}
-              text={connected ? 'WS online' : 'WS offline'} />
+            <Space>
+              <Badge status={connected ? 'success' : 'error'}
+                text={connected ? 'KPI WS' : 'KPI WS off'} />
+              <Badge status={aggConnected ? 'processing' : 'default'}
+                text={aggConnected ? 'live агрегаты' : 'live off'} />
+              <Button
+                danger
+                size="small"
+                icon={<StopOutlined />}
+                loading={closing}
+                onClick={handleCloseShift}
+              >
+                Закрыть смену
+              </Button>
+            </Space>
           </Col>
         </Row>
       </Card>
@@ -203,13 +240,13 @@ function OnlineShiftPanel({ lineId, latestKpi, connected }) {
 }
 
 function LineSummaryPanel({ lineId }) {
-  const [kpiList, setKpiList] = useState([])
+  const [summary, setSummary] = useState(null)
   const [loading, setLoading] = useState(false)
   const [notifications, setNotifications] = useState([])
 
   useEffect(() => {
     if (!lineId) {
-      setKpiList([])
+      setSummary(null)
       setNotifications([])
       return
     }
@@ -217,20 +254,21 @@ function LineSummaryPanel({ lineId }) {
     const load = async () => {
       setLoading(true)
       try {
-        const res = await getKpiByLine(lineId)
+        const res = await getLineSummary(lineId, { limit: 20 })
         if (cancelled) return
-        const list = res.data || []
-        setKpiList(list)
-        if (list.length > 0) {
+        const data = res.data
+        setSummary(data && data.shifts > 0 ? data : null)
+        const recent = data?.recent || []
+        if (recent.length > 0) {
           try {
-            const n = await getNotificationsByShift(list[0].shiftId)
+            const n = await getNotificationsByShift(recent[0].shiftId)
             if (!cancelled) setNotifications(n.data || [])
           } catch (e) { if (!cancelled) setNotifications([]) }
         } else {
           setNotifications([])
         }
       } catch (e) {
-        if (!cancelled) setKpiList([])
+        if (!cancelled) setSummary(null)
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -239,33 +277,17 @@ function LineSummaryPanel({ lineId }) {
     return () => { cancelled = true }
   }, [lineId])
 
-  const summary = useMemo(() => {
-    if (!kpiList.length) return null
-    const avg = (k) => kpiList.reduce((s, x) => s + (Number(x[k]) || 0), 0) / kpiList.length
-    const sum = (k) => kpiList.reduce((s, x) => s + (Number(x[k]) || 0), 0)
-    return {
-      shifts: kpiList.length,
-      avgOee: avg('oee'),
-      avgAvail: avg('availability'),
-      avgPerf: avg('performance'),
-      avgQual: avg('quality'),
-      totalOutput: sum('totalOutput'),
-      totalGood: sum('goodOutput'),
-      totalScrap: sum('scrapCount'),
-      totalDowntime: sum('downtime'),
-      totalStops: sum('numberOfStops'),
-    }
-  }, [kpiList])
+  const recent = summary?.recent || []
 
   const chartData = useMemo(() =>
-    [...kpiList].reverse().map((k) => ({
+    [...recent].reverse().map((k) => ({
       name: `#${k.shiftId}`,
       OEE: Math.round((k.oee || 0) * 100),
       Доступность: Math.round((k.availability || 0) * 100),
       Производительность: Math.round((k.performance || 0) * 100),
       Качество: Math.round((k.quality || 0) * 100),
     })),
-  [kpiList])
+  [recent])
 
   const tableColumns = [
     { title: 'Смена', dataIndex: 'shiftId', width: 80 },
@@ -305,16 +327,16 @@ function LineSummaryPanel({ lineId }) {
     <>
       <Row gutter={16} style={{ marginBottom: 16 }}>
         <Col span={6}>
-          <KpiGauge title="Средний OEE" value={summary.avgOee} threshold={0.65} />
+          <KpiGauge title="Средний OEE" value={Number(summary.avgOee || 0)} threshold={0.65} />
         </Col>
         <Col span={6}>
-          <KpiGauge title="Средняя доступность" value={summary.avgAvail} threshold={0.80} />
+          <KpiGauge title="Средняя доступность" value={Number(summary.avgAvailability || 0)} threshold={0.80} />
         </Col>
         <Col span={6}>
-          <KpiGauge title="Средняя производительность" value={summary.avgPerf} threshold={0.75} />
+          <KpiGauge title="Средняя производительность" value={Number(summary.avgPerformance || 0)} threshold={0.75} />
         </Col>
         <Col span={6}>
-          <KpiGauge title="Среднее качество" value={summary.avgQual} threshold={0.95} />
+          <KpiGauge title="Среднее качество" value={Number(summary.avgQuality || 0)} threshold={0.95} />
         </Col>
       </Row>
 
@@ -326,11 +348,11 @@ function LineSummaryPanel({ lineId }) {
           <Card><Statistic title="Суммарный выпуск" value={summary.totalOutput} suffix="шт" /></Card>
         </Col>
         <Col span={6}>
-          <Card><Statistic title="Суммарный брак" value={summary.totalScrap} suffix="шт" /></Card>
+          <Card><Statistic title="Суммарный брак" value={summary.scrapCount} suffix="шт" /></Card>
         </Col>
         <Col span={6}>
           <Card><Statistic title="Суммарный простой"
-            value={Number(summary.totalDowntime).toFixed(0)} suffix="мин" /></Card>
+            value={Number(summary.totalDowntime || 0).toFixed(0)} suffix="мин" /></Card>
         </Col>
       </Row>
 
@@ -369,10 +391,10 @@ function LineSummaryPanel({ lineId }) {
         </Row>
       )}
 
-      <Card title="Завершённые смены по линии" size="small" style={{ marginBottom: 16 }}>
+      <Card title={`Последние ${recent.length} смен по линии`} size="small" style={{ marginBottom: 16 }}>
         <Table
           rowKey="shiftId"
-          dataSource={kpiList}
+          dataSource={recent}
           columns={tableColumns}
           pagination={{ pageSize: 10 }}
           size="small"

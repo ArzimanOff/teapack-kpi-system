@@ -24,7 +24,8 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
     // Пути которые не требуют авторизации
     private static final List<String> PUBLIC_PATHS = List.of(
             "/api/auth/login",
-            "/api/auth/register"
+            "/api/auth/register",
+            "/api/auth/refresh"
     );
 
     @Override
@@ -47,7 +48,13 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
 
         try {
             SecretKey key = Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret));
-            Jwts.parser().verifyWith(key).build().parseSignedClaims(token);
+            Claims claims = Jwts.parser().verifyWith(key).build()
+                    .parseSignedClaims(token).getPayload();
+            // refresh-токены принимаются только в /api/auth/refresh (см. PUBLIC_PATHS)
+            if ("refresh".equals(claims.get("typ", String.class))) {
+                exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
+                return exchange.getResponse().setComplete();
+            }
             return chain.filter(exchange);
         } catch (JwtException e) {
             exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);

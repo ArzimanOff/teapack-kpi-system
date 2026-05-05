@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,6 +28,8 @@ public class ShiftService {
     private final ShiftAggregateRepository shiftAggregateRepository;
     private final DowntimeEventRepository downtimeEventRepository;
     private final KpiCalculationClient kpiCalculationClient;
+    private final SimpMessagingTemplate messagingTemplate;
+    private final AuditService auditService;
 
     @Transactional
     public Shift createShift(CreateShiftRequest request) {
@@ -57,6 +60,9 @@ public class ShiftService {
         shiftAggregateRepository.save(aggregate);
 
         log.info("Created shift: id={}, lineId={}", shift.getId(), shift.getLineId());
+        auditService.log("SHIFT_CREATE", "Shift", shift.getId(),
+                String.format("line=%s, plannedOutput=%d, nominalSpeed=%s",
+                        shift.getLineId(), shift.getPlannedOutput(), shift.getNominalSpeed()));
         return shift;
     }
 
@@ -78,6 +84,7 @@ public class ShiftService {
         shift.setActualStart(LocalDateTime.now());
         shift = shiftRepository.save(shift);
         log.info("Started shift: id={}", shiftId);
+        auditService.log("SHIFT_START", "Shift", shiftId, "line=" + shift.getLineId());
         return shift;
     }
 
@@ -101,6 +108,7 @@ public class ShiftService {
         shift = shiftRepository.save(shift);
 
         log.info("Closed shift: id={}", shiftId);
+        auditService.log("SHIFT_CLOSE", "Shift", shiftId, "line=" + shift.getLineId());
 
         // Запускаем расчёт KPI
         try {
@@ -121,8 +129,12 @@ public class ShiftService {
                 aggregate.setTotalOutput(aggregate.getTotalOutput() + dto.getOutputCount());
                 aggregate.setGoodOutput(aggregate.getTotalOutput() - aggregate.getScrapCount());
             }
+            if (dto.getLineSpeed() != null) {
+                aggregate.setAvgSpeed(dto.getLineSpeed());
+            }
             shiftAggregateRepository.save(aggregate);
         });
+        publishShiftData(dto.getShiftId());
     }
 
     @Transactional
@@ -133,6 +145,39 @@ public class ShiftService {
             case "SCRAP" -> handleScrap(dto);
             default -> log.warn("Unknown event type: {}", dto.getEventType());
         }
+        if (dto.getShiftId() != null) publishShiftData(dto.getShiftId());
+    }
+
+    private void publishShiftData(Long shiftId) {
+        try {
+            ShiftDataDto data = buildShiftData(shiftId);
+            messagingTemplate.convertAndSend("/topic/aggregate/" + shiftId, data);
+        } catch (Exception e) {
+            log.warn("Failed to publish live aggregate for shift {}: {}", shiftId, e.getMessage());
+        }
+    }
+
+    public ShiftDataDto buildShiftData(Long shiftId) {
+        Shift shift = getShiftOrThrow(shiftId);
+        ShiftAggregate aggregate = getShiftAggregate(shiftId);
+        List<DowntimeEvent> downtimes = downtimeEventRepository.findByShiftIdOrderByStartTimeAsc(shiftId);
+
+        ShiftDataDto dto = new ShiftDataDto();
+        dto.setShiftId(shift.getId());
+        dto.setLineId(shift.getLineId());
+        dto.setPlannedStart(shift.getPlannedStart());
+        dto.setPlannedEnd(shift.getPlannedEnd());
+        dto.setActualStart(shift.getActualStart());
+        dto.setActualEnd(shift.getActualEnd());
+        dto.setPlannedOutput(shift.getPlannedOutput());
+        dto.setNominalSpeed(shift.getNominalSpeed());
+        dto.setTotalOutput(aggregate.getTotalOutput());
+        dto.setGoodOutput(aggregate.getGoodOutput());
+        dto.setScrapCount(aggregate.getScrapCount());
+        dto.setDowntimeMinutes(aggregate.getDowntimeMinutes());
+        dto.setAvgSpeed(aggregate.getAvgSpeed());
+        dto.setNumberOfStops(downtimes.size());
+        return dto;
     }
 
     private void handleDowntimeStart(OperatorEventDto dto) {
@@ -222,6 +267,7 @@ public class ShiftService {
         shift.setStatus("CANCELLED");
         shift = shiftRepository.save(shift);
         log.info("Cancelled planned shift: id={}", shiftId);
+        auditService.log("SHIFT_CANCEL", "Shift", shiftId, "line=" + shift.getLineId());
         return shift;
     }
 

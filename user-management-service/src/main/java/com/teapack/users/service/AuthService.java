@@ -29,11 +29,39 @@ public class AuthService {
         );
         User user = userRepository.findByUsername(request.getUsername())
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        String token = jwtUtil.generateToken(user.getUsername(), user.getRole().getName());
-        return new LoginResponse(token, user.getUsername(), user.getRole().getName());
+        String role = user.getRole().getName();
+        String access = jwtUtil.generateAccessToken(user.getUsername(), role);
+        String refresh = jwtUtil.generateRefreshToken(user.getUsername(), role);
+        return new LoginResponse(access, refresh, user.getUsername(), role);
+    }
+
+    public LoginResponse refresh(String refreshToken) {
+        if (refreshToken == null || !jwtUtil.isTokenValid(refreshToken)) {
+            throw new RuntimeException("Invalid or expired refresh token");
+        }
+        if (!JwtUtil.TYPE_REFRESH.equals(jwtUtil.extractType(refreshToken))) {
+            throw new RuntimeException("Provided token is not a refresh token");
+        }
+        String username = jwtUtil.extractUsername(refreshToken);
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        if (!Boolean.TRUE.equals(user.getEnabled())) {
+            throw new RuntimeException("User is disabled");
+        }
+        String role = user.getRole().getName();
+        String newAccess = jwtUtil.generateAccessToken(username, role);
+        // Сами refresh-токены оставляем тем же — single-use ротацию делать не будем для простоты ВКР
+        return new LoginResponse(newAccess, refreshToken, username, role);
     }
 
     public UserDto register(RegisterRequest request) {
+        // Открытая регистрация разрешена только когда в системе ещё нет пользователей
+        // (первичный bootstrap-админ). После этого новые учётки создаёт ROLE_ADMIN
+        // через POST /api/users.
+        if (userRepository.count() > 0) {
+            throw new SecurityException(
+                    "Open registration disabled: создание пользователей доступно только администратору");
+        }
         if (userRepository.existsByUsername(request.getUsername())) {
             throw new RuntimeException("Username already exists");
         }

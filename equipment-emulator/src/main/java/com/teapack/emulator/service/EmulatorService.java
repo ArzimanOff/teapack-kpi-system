@@ -13,7 +13,12 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @Service
@@ -34,121 +39,148 @@ public class EmulatorService {
 
     private final Random random = new Random();
 
-    private boolean active = false;
-    private Long currentShiftId = null;
-    private String currentStatus = "STOPPED";
-
-    private String currentLineId;
-    private double nominalSpeed;
-    private double minSpeed;
-    private double maxSpeed;
-    private double minTemp;
-    private double maxTemp;
+    /** key = shiftId; ConcurrentHashMap для безопасного итерирования из @Scheduled и REST */
+    private final Map<Long, EmulatorRunState> runs = new ConcurrentHashMap<>();
 
     @Scheduled(fixedDelayString = "${emulator.interval-ms}")
     public void emulate() {
-        if (!active || currentShiftId == null) return;
-
-        EquipmentReadingDto dto = generateReading();
-        try {
-            dataCollectionClient.sendReading(dto);
-            log.debug("Sent reading: line={}, status={}, speed={}, output={}",
-                    currentLineId, dto.getStatus(), dto.getLineSpeed(), dto.getOutputCount());
-        } catch (Exception e) {
-            log.error("Failed to send reading: {}", e.getMessage());
+        for (EmulatorRunState run : runs.values()) {
+            if (!"RUNNING".equals(run.getStatus())) continue;
+            try {
+                EquipmentReadingDto dto = generateReading(run);
+                dataCollectionClient.sendReading(dto);
+                run.setTicks(run.getTicks() + 1);
+                if (run.getScenarioTicksLeft() > 0) {
+                    int left = run.getScenarioTicksLeft() - 1;
+                    run.setScenarioTicksLeft(left);
+                    if (left == 0) {
+                        log.info("Scenario {} finished for shift {}", run.getScenario(), run.getShiftId());
+                        run.setScenario("NORMAL");
+                    }
+                }
+                log.debug("Tick: shift={}, line={}, speed={}, output={}, scenario={}",
+                        run.getShiftId(), run.getLineId(),
+                        dto.getLineSpeed(), dto.getOutputCount(), run.getScenario());
+            } catch (Exception e) {
+                log.error("Failed tick for shift {}: {}", run.getShiftId(), e.getMessage());
+            }
         }
     }
 
-    public void start(Long shiftId, String lineId) {
-        this.currentShiftId = shiftId;
-        this.currentLineId = (lineId != null && !lineId.isBlank()) ? lineId : defaultLineId;
-        loadLineParams(this.currentLineId);
-        this.active = true;
-        this.currentStatus = "RUNNING";
-        log.info("Emulator started for shift={}, line={}, nominalSpeed={}, speedRange=[{}..{}], tempRange=[{}..{}]",
-                shiftId, currentLineId, nominalSpeed, minSpeed, maxSpeed, minTemp, maxTemp);
+    public EmulatorRunState start(Long shiftId, String lineId) {
+        if (shiftId == null) throw new IllegalArgumentException("shiftId is required");
+        EmulatorRunState run = runs.computeIfAbsent(shiftId, id -> new EmulatorRunState());
+        run.setShiftId(shiftId);
+        run.setLineId((lineId != null && !lineId.isBlank()) ? lineId : defaultLineId);
+        run.setStartedAt(LocalDateTime.now());
+        run.setStatus("RUNNING");
+        run.setScenario("NORMAL");
+        run.setScenarioTicksLeft(0);
+        loadLineParams(run);
+        log.info("Emulator START: shift={}, line={}, nominalSpeed={}, speedRange=[{}..{}], tempRange=[{}..{}]",
+                shiftId, run.getLineId(), run.getNominalSpeed(),
+                run.getMinSpeed(), run.getMaxSpeed(), run.getMinTemp(), run.getMaxTemp());
+        return run;
     }
 
-    public void stop() {
-        this.active = false;
-        this.currentStatus = "STOPPED";
-        log.info("Emulator stopped");
+    public EmulatorRunState stop(Long shiftId) {
+        EmulatorRunState run = runs.get(shiftId);
+        if (run == null) return null;
+        run.setStatus("STOPPED");
+        log.info("Emulator STOP: shift={}", shiftId);
+        return run;
     }
 
-    public void setStatus(String status) {
-        this.currentStatus = status;
+    /** Полное удаление записи о смене из эмулятора */
+    public boolean remove(Long shiftId) {
+        EmulatorRunState removed = runs.remove(shiftId);
+        if (removed != null) log.info("Emulator REMOVED: shift={}", shiftId);
+        return removed != null;
     }
 
-    public String getStatus() {
-        return currentStatus;
+    /** Применение сценария — действует на ближайшие N тиков. */
+    public EmulatorRunState applyScenario(Long shiftId, String scenario, int ticks) {
+        EmulatorRunState run = runs.get(shiftId);
+        if (run == null) throw new IllegalStateException("No emulator run for shift " + shiftId);
+        String norm = scenario == null ? "NORMAL" : scenario.toUpperCase();
+        if (!List.of("NORMAL", "SPEED_DROP", "SCRAP_BURST", "OUTLIER").contains(norm)) {
+            throw new IllegalArgumentException("Unknown scenario: " + scenario);
+        }
+        run.setScenario(norm);
+        run.setScenarioTicksLeft(Math.max(0, ticks));
+        log.info("Scenario {} applied to shift {} for {} ticks", norm, shiftId, ticks);
+        return run;
     }
 
-    public boolean isActive() {
-        return active;
+    public Collection<EmulatorRunState> getRuns() {
+        return new ArrayList<>(runs.values());
     }
 
-    public Long getCurrentShiftId() {
-        return currentShiftId;
+    public EmulatorRunState getRun(Long shiftId) {
+        return runs.get(shiftId);
     }
 
-    public String getCurrentLineId() {
-        return currentLineId;
-    }
-
-    private void loadLineParams(String lineId) {
+    private void loadLineParams(EmulatorRunState run) {
         try {
-            ProductionLineDto line = linesClient.findByCode(lineId);
-            this.nominalSpeed = line.getNominalSpeed() != null
+            ProductionLineDto line = linesClient.findByCode(run.getLineId());
+            double nominal = line.getNominalSpeed() != null
                     ? line.getNominalSpeed().doubleValue() : fallbackNominalSpeed;
-            // Сохраняем 10%-разброс относительно номинала, но не выходим за пороги outlier-detection
-            double speedJitter = nominalSpeed * 0.1;
-            this.minSpeed = line.getMinSpeed() != null
-                    ? Math.max(line.getMinSpeed().doubleValue(), nominalSpeed - speedJitter)
-                    : nominalSpeed - speedJitter;
-            this.maxSpeed = line.getMaxSpeed() != null
-                    ? Math.min(line.getMaxSpeed().doubleValue(), nominalSpeed + speedJitter)
-                    : nominalSpeed + speedJitter;
-            // Температура — используем пороги справочника, либо fallback ±5
-            this.minTemp = line.getMinTemperature() != null
+            double jitter = nominal * 0.1;
+            double minS = line.getMinSpeed() != null
+                    ? Math.max(line.getMinSpeed().doubleValue(), nominal - jitter)
+                    : nominal - jitter;
+            double maxS = line.getMaxSpeed() != null
+                    ? Math.min(line.getMaxSpeed().doubleValue(), nominal + jitter)
+                    : nominal + jitter;
+            run.setNominalSpeed(nominal);
+            run.setMinSpeed(minS);
+            run.setMaxSpeed(maxS);
+            run.setMinTemp(line.getMinTemperature() != null
                     ? line.getMinTemperature().doubleValue()
-                    : fallbackTemperatureBase - 5;
-            this.maxTemp = line.getMaxTemperature() != null
+                    : fallbackTemperatureBase - 5);
+            run.setMaxTemp(line.getMaxTemperature() != null
                     ? line.getMaxTemperature().doubleValue()
-                    : fallbackTemperatureBase + 5;
+                    : fallbackTemperatureBase + 5);
         } catch (Exception e) {
-            log.warn("Failed to load line '{}' from reference, using fallbacks: {}", lineId, e.getMessage());
-            this.nominalSpeed = fallbackNominalSpeed;
-            this.minSpeed = nominalSpeed * 0.9;
-            this.maxSpeed = nominalSpeed * 1.1;
-            this.minTemp = fallbackTemperatureBase - 5;
-            this.maxTemp = fallbackTemperatureBase + 5;
+            log.warn("Failed to load line '{}' from reference, using fallbacks: {}",
+                    run.getLineId(), e.getMessage());
+            run.setNominalSpeed(fallbackNominalSpeed);
+            run.setMinSpeed(fallbackNominalSpeed * 0.9);
+            run.setMaxSpeed(fallbackNominalSpeed * 1.1);
+            run.setMinTemp(fallbackTemperatureBase - 5);
+            run.setMaxTemp(fallbackTemperatureBase + 5);
         }
     }
 
-    private EquipmentReadingDto generateReading() {
+    private EquipmentReadingDto generateReading(EmulatorRunState run) {
         EquipmentReadingDto dto = new EquipmentReadingDto();
-        dto.setLineId(currentLineId);
+        dto.setLineId(run.getLineId());
         dto.setTimestamp(LocalDateTime.now());
-        dto.setShiftId(currentShiftId);
-        dto.setStatus(currentStatus);
+        dto.setShiftId(run.getShiftId());
+        dto.setStatus("RUNNING");
 
-        if ("RUNNING".equals(currentStatus)) {
-            double speed = minSpeed + random.nextDouble() * (maxSpeed - minSpeed);
-            dto.setLineSpeed(BigDecimal.valueOf(speed).setScale(2, RoundingMode.HALF_UP));
+        double speed = run.getMinSpeed() + random.nextDouble() * (run.getMaxSpeed() - run.getMinSpeed());
+        double temp = run.getMinTemp() + random.nextDouble() * (run.getMaxTemp() - run.getMinTemp());
+        int output = (int) Math.max(1, Math.round(speed / 60.0 * 5.0));
 
-            double temp = minTemp + random.nextDouble() * (maxTemp - minTemp);
-            dto.setTemperature(BigDecimal.valueOf(temp).setScale(2, RoundingMode.HALF_UP));
-
-            // Выпуск пропорционален средней скорости (~speed/60 шт/с * 5с интервал)
-            int output = (int) Math.max(1, Math.round(speed / 60.0 * 5.0));
-            dto.setOutputCount(output);
-        } else {
-            dto.setLineSpeed(BigDecimal.ZERO);
-            dto.setTemperature(BigDecimal.valueOf((minTemp + maxTemp) / 2)
-                    .setScale(2, RoundingMode.HALF_UP));
-            dto.setOutputCount(0);
+        switch (run.getScenario()) {
+            case "SPEED_DROP" -> {
+                speed = run.getNominalSpeed() * (0.3 + random.nextDouble() * 0.2);
+                output = (int) Math.max(0, Math.round(speed / 60.0 * 5.0));
+            }
+            case "SCRAP_BURST" -> {
+                dto.setStatus("SCRAP");
+            }
+            case "OUTLIER" -> {
+                speed = run.getMaxSpeed() * 2.5;
+                temp = run.getMaxTemp() + 30;
+            }
+            default -> { /* NORMAL */ }
         }
 
+        dto.setLineSpeed(BigDecimal.valueOf(speed).setScale(2, RoundingMode.HALF_UP));
+        dto.setTemperature(BigDecimal.valueOf(temp).setScale(2, RoundingMode.HALF_UP));
+        dto.setOutputCount(output);
         return dto;
     }
 }

@@ -9,11 +9,16 @@ import {
   UserOutlined,
   CalendarOutlined,
   HistoryOutlined,
+  ThunderboltOutlined,
   SettingOutlined,
   WarningOutlined,
+  TeamOutlined,
+  AuditOutlined,
+  ExperimentOutlined,
 } from '@ant-design/icons'
 import { clearAuth, getUser, getRole, hasRole } from '../../utils/auth'
 import { ROUTE_ACCESS } from '../../constants/access'
+import NotificationBell from '../NotificationBell'
 
 const { Header, Sider, Content } = Layout
 const { Text } = Typography
@@ -34,11 +39,15 @@ function MainLayout() {
   const allMenuItems = [
     { key: '/dashboard',      icon: <DashboardOutlined />, label: 'Дашборд' },
     { key: '/operator',       icon: <ControlOutlined />,   label: 'Оператор' },
-    { key: '/shifts/planned', icon: <CalendarOutlined />,  label: 'Запланированные смены' },
-    { key: '/shifts/history', icon: <HistoryOutlined />,   label: 'История смен' },
+    { key: '/shifts/planned', icon: <CalendarOutlined />,    label: 'Запланированные смены' },
+    { key: '/shifts/active',  icon: <ThunderboltOutlined />, label: 'Активные смены' },
+    { key: '/shifts/history', icon: <HistoryOutlined />,     label: 'История смен' },
     { key: '/reports',        icon: <FileTextOutlined />,  label: 'Отчёты' },
     { key: '/admin/lines',    icon: <SettingOutlined />,   label: 'Линии (админ)' },
     { key: '/admin/readings', icon: <WarningOutlined />,   label: 'Outlier-показания' },
+    { key: '/admin/users',    icon: <TeamOutlined />,      label: 'Пользователи' },
+    { key: '/admin/audit',    icon: <AuditOutlined />,     label: 'Журнал аудита' },
+    { key: '/admin/emulator', icon: <ExperimentOutlined />, label: 'Эмулятор' },
   ]
   const menuItems = allMenuItems.filter(item => hasRole(ROUTE_ACCESS[item.key]))
 
@@ -76,7 +85,8 @@ function MainLayout() {
           <Text strong style={{ fontSize: 16 }}>
             Система мониторинга производственного участка
           </Text>
-          <Space>
+          <Space size="middle">
+            <NotificationBell />
             <Avatar icon={<UserOutlined />} />
             <Text>{user.username}</Text>
             <Text type="secondary">({roleLabels[role] || role})</Text>
