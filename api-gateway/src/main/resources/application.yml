@@ -56,6 +56,24 @@ spring:
           filters:
             - StripPrefix=0
 
+        # WebSocket / SockJS прокси через gateway. SockJS добавляет
+        # суффиксы /info, /{server}/{session}/xhr_streaming и т. п. —
+        # path с /** покрывает их все.
+        - id: ws-kpi
+          uri: http://localhost:8084
+          predicates:
+            - Path=/ws-kpi/**
+
+        - id: ws-aggregate
+          uri: http://localhost:8083
+          predicates:
+            - Path=/ws-aggregate/**
+
+        - id: ws-notifications
+          uri: http://localhost:8086
+          predicates:
+            - Path=/ws-notifications/**
+
       globalcors:
         corsConfigurations:
           '[/**]':

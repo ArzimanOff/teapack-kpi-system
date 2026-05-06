@@ -41,16 +41,12 @@ public class Notification {
 
     private BigDecimal threshold;
 
-    @Column(name = "is_read")
-    private Boolean isRead;
-
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
     @PrePersist
     public void prePersist() {
         this.createdAt = LocalDateTime.now();
-        if (this.isRead == null) this.isRead = false;
         if (this.severity == null) this.severity = "WARNING";
     }
 }

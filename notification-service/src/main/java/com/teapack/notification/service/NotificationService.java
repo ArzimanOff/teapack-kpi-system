@@ -3,6 +3,8 @@ package com.teapack.notification.service;
 import com.teapack.notification.dto.KpiResultDto;
 import com.teapack.notification.entity.KpiThresholds;
 import com.teapack.notification.entity.Notification;
+import com.teapack.notification.entity.NotificationRead;
+import com.teapack.notification.repository.NotificationReadRepository;
 import com.teapack.notification.repository.NotificationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -11,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -20,6 +23,7 @@ import java.util.List;
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
+    private final NotificationReadRepository readRepository;
     private final SimpMessagingTemplate messagingTemplate;
     private final KpiThresholdsService thresholdsService;
 
@@ -68,7 +72,6 @@ public class NotificationService {
             List<Notification> saved = notificationRepository.saveAll(notifications);
             log.info("Created {} notifications for shift: {}", saved.size(), kpi.getShiftId());
             try {
-                // Push в общий канал — фронтовый bell подписывается у любого пользователя
                 messagingTemplate.convertAndSend("/topic/notifications", saved);
             } catch (Exception e) {
                 log.warn("Failed to push notifications via WS: {}", e.getMessage());
@@ -80,20 +83,21 @@ public class NotificationService {
     }
 
     @Transactional
-    public int markAllRead() {
-        int updated = notificationRepository.markAllRead();
+    public int markAllRead(String username) {
+        int updated = readRepository.markAllReadForUser(username);
         try {
-            messagingTemplate.convertAndSend("/topic/notifications/read-all", updated);
+            messagingTemplate.convertAndSend(
+                    "/topic/notifications/read-all/" + username, updated);
         } catch (Exception ignored) {}
         return updated;
     }
 
-    public long countUnread() {
-        return notificationRepository.countByIsReadFalse();
+    public long countUnread(String username) {
+        return notificationRepository.countUnreadForUser(username);
     }
 
-    public List<Notification> getUnread() {
-        return notificationRepository.findByIsReadFalseOrderByCreatedAtDesc();
+    public List<Notification> getUnread(String username) {
+        return notificationRepository.findUnreadForUser(username);
     }
 
     public List<Notification> getByShift(Long shiftId) {
@@ -101,11 +105,14 @@ public class NotificationService {
     }
 
     @Transactional
-    public void markAsRead(Long id) {
-        notificationRepository.findById(id).ifPresent(n -> {
-            n.setIsRead(true);
-            notificationRepository.save(n);
-        });
+    public void markAsRead(Long id, String username) {
+        if (!notificationRepository.existsById(id)) return;
+        if (readRepository.existsByNotificationIdAndUsername(id, username)) return;
+        readRepository.save(NotificationRead.builder()
+                .notificationId(id)
+                .username(username)
+                .readAt(LocalDateTime.now())
+                .build());
     }
 
     private Notification createNotification(KpiResultDto kpi, String type,

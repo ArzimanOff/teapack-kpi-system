@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { Client } from '@stomp/stompjs'
-import SockJS from 'sockjs-client'
 import { getToken } from '../utils/auth'
+import { WS_GATEWAY_URL } from '../api/config'
 
+// STOMP-over-нативный-WebSocket (без SockJS): api-gateway прозрачно
+// проксирует ws-upgrade. JWT валидируется на STOMP CONNECT-фрейме.
 export const useWebSocket = (lineId, onMessage) => {
   const [connected, setConnected] = useState(false)
   const handlerRef = useRef(onMessage)
@@ -22,7 +24,7 @@ export const useWebSocket = (lineId, onMessage) => {
     }
 
     const stompClient = new Client({
-      webSocketFactory: () => new SockJS('http://localhost:8084/ws'),
+      brokerURL: `${WS_GATEWAY_URL}/ws-kpi`,
       connectHeaders: { Authorization: `Bearer ${token}` },
       onConnect: () => {
         setConnected(true)

@@ -21,6 +21,10 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
+        // Нативный WS-эндпоинт для прокси через api-gateway (без SockJS-fallback).
+        registry.addEndpoint("/ws-aggregate")
+                .setAllowedOriginPatterns("*");
+        // SockJS-fallback на старом /ws для обратной совместимости.
         registry.addEndpoint("/ws")
                 .setAllowedOriginPatterns("*")
                 .withSockJS();

@@ -53,11 +53,12 @@ public class KpiCalculator {
         result.setNominalSpeed(nominalSpeed);
         result.setAvgSpeed(avgSpeed);
 
-        // OutputRate = TotalOutput / OperatingTime
-        result.setOutputRate(divideOrZero(
-                BigDecimal.valueOf(totalOutput), operatingTime));
+        // OutputRate = TotalOutput / OperatingTime  (шт/мин фактически)
+        BigDecimal outputRate = divideOrZero(
+                BigDecimal.valueOf(totalOutput), operatingTime);
+        result.setOutputRate(outputRate);
 
-        // SpeedLoss = NominalSpeed - AvgSpeed
+        // SpeedLoss = NominalSpeed - AvgSpeed  (шт/мин потерь скорости)
         result.setSpeedLoss(nominalSpeed.subtract(avgSpeed).max(BigDecimal.ZERO));
 
         // --- Метрики качества ---
@@ -67,13 +68,18 @@ public class KpiCalculator {
                 : BigDecimal.ZERO);
 
         // --- Базовые KPI ---
-        // Availability = (PlannedTime - Downtime) / PlannedTime
-        BigDecimal availability = divideOrZero(operatingTime, plannedTime);
+        // Availability = OperatingTime / PlannedTime  ∈ [0,1]
+        BigDecimal availability = divideOrZero(operatingTime, plannedTime).min(BigDecimal.ONE);
         result.setAvailability(availability);
 
-        // Performance = ActualOutput / PlannedOutput
-        BigDecimal performance = plannedOutput > 0
-                ? divideOrZero(BigDecimal.valueOf(totalOutput), BigDecimal.valueOf(plannedOutput))
+        // Performance = TotalOutput / (NominalSpeed × OperatingTime)
+        // — отношение фактического выпуска к теоретическому максимуму
+        // на ВРЕМЕНИ РАБОТЫ (без простоев). Соответствует классической ОЕЕ-методике:
+        // Availability покрывает простои, Performance — потери скорости при работе.
+        // Без max(1) — наоборот, capped to 1 (если из-за округления пакетов > 100%).
+        BigDecimal theoreticalMax = nominalSpeed.multiply(operatingTime);
+        BigDecimal performance = theoreticalMax.compareTo(BigDecimal.ZERO) > 0
+                ? divideOrZero(BigDecimal.valueOf(totalOutput), theoreticalMax).min(BigDecimal.ONE)
                 : BigDecimal.ZERO;
         result.setPerformance(performance);
 
@@ -89,10 +95,11 @@ public class KpiCalculator {
         result.setOee(oee);
 
         // --- Производные ---
-        // PerformanceLoss = 1 - Performance
+        // PerformanceLoss = 1 - Performance (доля потерянного выпуска от теор. максимума)
         result.setPerformanceLoss(BigDecimal.ONE.subtract(performance).max(BigDecimal.ZERO));
 
         // PlanFulfillment = TotalOutput / PlannedOutput
+        // (отдельная метрика «выполнение плана» — НЕ Performance)
         result.setPlanFulfillment(plannedOutput > 0
                 ? divideOrZero(BigDecimal.valueOf(totalOutput), BigDecimal.valueOf(plannedOutput))
                 : BigDecimal.ZERO);

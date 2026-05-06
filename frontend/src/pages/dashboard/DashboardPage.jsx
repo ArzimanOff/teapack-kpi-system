@@ -15,18 +15,21 @@ import { getNotificationsByShift } from '../../api/notifications'
 import { useWebSocket } from '../../hooks/useWebSocket'
 import { useAggregateSocket } from '../../hooks/useAggregateSocket'
 import { useLines } from '../../hooks/useLines'
+import KpiMetricLabel from '../../components/KpiMetricLabel'
 
 const { Title, Text } = Typography
 
 const kpiColor = (value, threshold) =>
   value >= threshold ? '#52c41a' : value >= threshold * 0.8 ? '#faad14' : '#ff4d4f'
 
-function KpiGauge({ title, value, threshold }) {
+function KpiGauge({ title, value, threshold, metricKey }) {
   const pct = Math.round((value || 0) * 100)
   const color = kpiColor(value || 0, threshold)
   return (
     <Card style={{ textAlign: 'center' }}>
-      <Text type="secondary">{title}</Text>
+      <Text type="secondary">
+        {metricKey ? <KpiMetricLabel metricKey={metricKey} label={title} /> : title}
+      </Text>
       <Progress
         type="dashboard"
         percent={pct}
@@ -187,13 +190,13 @@ function OnlineShiftPanel({ lineId, latestKpi, connected }) {
 
       <Row gutter={16} style={{ marginBottom: 16 }}>
         <Col span={6}>
-          <KpiGauge title="Качество (live)" value={quality} threshold={0.95} />
+          <KpiGauge metricKey="quality" title="Качество (live)" value={quality} threshold={0.95} />
         </Col>
         <Col span={6}>
-          <KpiGauge title="Производительность (оценка)" value={performance} threshold={0.75} />
+          <KpiGauge metricKey="performance" title="Производительность (оценка)" value={performance} threshold={0.75} />
         </Col>
         <Col span={6}>
-          <KpiGauge title="Выполнение плана" value={planFulfillment} threshold={0.85} />
+          <KpiGauge metricKey="planFulfillment" title="Выполнение плана" value={planFulfillment} threshold={0.85} />
         </Col>
         <Col span={6}>
           <Card style={{ textAlign: 'center' }}>
@@ -208,14 +211,14 @@ function OnlineShiftPanel({ lineId, latestKpi, connected }) {
 
       <Card title="Прочие показатели смены" size="small">
         <Descriptions column={2} size="small" bordered>
-          <Descriptions.Item label="Остановок">{stops}</Descriptions.Item>
-          <Descriptions.Item label="Средн. длительность остановки, мин">
+          <Descriptions.Item label={<KpiMetricLabel metricKey="numberOfStops" label="Остановок" />}>{stops}</Descriptions.Item>
+          <Descriptions.Item label={<KpiMetricLabel metricKey="avgDowntime" label="Средн. длительность остановки, мин" />}>
             {stops > 0 ? (downtime / stops).toFixed(1) : '—'}
           </Descriptions.Item>
-          <Descriptions.Item label="Output Rate, шт/мин">
+          <Descriptions.Item label={<KpiMetricLabel metricKey="outputRate" label="Output Rate, шт/мин" />}>
             {fmtNum(avgSpeed)}
           </Descriptions.Item>
-          <Descriptions.Item label="Scrap Rate">
+          <Descriptions.Item label={<KpiMetricLabel metricKey="scrapRate" label="Scrap Rate" />}>
             {fmtPct(total > 0 ? scrap / total : 0)}
           </Descriptions.Item>
         </Descriptions>
@@ -225,10 +228,10 @@ function OnlineShiftPanel({ lineId, latestKpi, connected }) {
         <Card title="Последний расчёт KPI (получен по WebSocket)" size="small"
           style={{ marginTop: 16 }}>
           <Row gutter={16}>
-            <Col span={6}><Statistic title="OEE" value={fmtPct(latestKpi.oee)} /></Col>
-            <Col span={6}><Statistic title="Avail" value={fmtPct(latestKpi.availability)} /></Col>
-            <Col span={6}><Statistic title="Perf" value={fmtPct(latestKpi.performance)} /></Col>
-            <Col span={6}><Statistic title="Qual" value={fmtPct(latestKpi.quality)} /></Col>
+            <Col span={6}><Statistic title={<KpiMetricLabel metricKey="oee" label="OEE" />} value={fmtPct(latestKpi.oee)} /></Col>
+            <Col span={6}><Statistic title={<KpiMetricLabel metricKey="availability" label="Avail" />} value={fmtPct(latestKpi.availability)} /></Col>
+            <Col span={6}><Statistic title={<KpiMetricLabel metricKey="performance" label="Perf" />} value={fmtPct(latestKpi.performance)} /></Col>
+            <Col span={6}><Statistic title={<KpiMetricLabel metricKey="quality" label="Qual" />} value={fmtPct(latestKpi.quality)} /></Col>
           </Row>
           <Text type="secondary" style={{ fontSize: 12 }}>
             * KPI считается при закрытии смены. Здесь — последнее значение, пришедшее на эту линию.
@@ -298,16 +301,16 @@ function LineSummaryPanel({ lineId }) {
       render: formatDate,
     },
     {
-      title: 'OEE',
+      title: <KpiMetricLabel metricKey="oee" label="OEE" />,
       dataIndex: 'oee',
       width: 90,
       render: (v) => fmtPct(v),
     },
-    { title: 'Avail', dataIndex: 'availability', width: 90, render: fmtPct },
-    { title: 'Perf', dataIndex: 'performance', width: 90, render: fmtPct },
-    { title: 'Qual', dataIndex: 'quality', width: 90, render: fmtPct },
+    { title: <KpiMetricLabel metricKey="availability" label="Avail" />, dataIndex: 'availability', width: 90, render: fmtPct },
+    { title: <KpiMetricLabel metricKey="performance" label="Perf" />, dataIndex: 'performance', width: 90, render: fmtPct },
+    { title: <KpiMetricLabel metricKey="quality" label="Qual" />, dataIndex: 'quality', width: 90, render: fmtPct },
     { title: 'Выпуск', dataIndex: 'totalOutput', width: 90 },
-    { title: 'Брак', dataIndex: 'scrapCount', width: 80 },
+    { title: <KpiMetricLabel metricKey="scrapRate" label="Брак" />, dataIndex: 'scrapCount', width: 80 },
   ]
 
   const notifColumns = [
@@ -327,16 +330,16 @@ function LineSummaryPanel({ lineId }) {
     <>
       <Row gutter={16} style={{ marginBottom: 16 }}>
         <Col span={6}>
-          <KpiGauge title="Средний OEE" value={Number(summary.avgOee || 0)} threshold={0.65} />
+          <KpiGauge metricKey="oee" title="Средний OEE" value={Number(summary.avgOee || 0)} threshold={0.65} />
         </Col>
         <Col span={6}>
-          <KpiGauge title="Средняя доступность" value={Number(summary.avgAvailability || 0)} threshold={0.80} />
+          <KpiGauge metricKey="availability" title="Средняя доступность" value={Number(summary.avgAvailability || 0)} threshold={0.80} />
         </Col>
         <Col span={6}>
-          <KpiGauge title="Средняя производительность" value={Number(summary.avgPerformance || 0)} threshold={0.75} />
+          <KpiGauge metricKey="performance" title="Средняя производительность" value={Number(summary.avgPerformance || 0)} threshold={0.75} />
         </Col>
         <Col span={6}>
-          <KpiGauge title="Среднее качество" value={Number(summary.avgQuality || 0)} threshold={0.95} />
+          <KpiGauge metricKey="quality" title="Среднее качество" value={Number(summary.avgQuality || 0)} threshold={0.95} />
         </Col>
       </Row>
 

@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { Client } from '@stomp/stompjs'
-import SockJS from 'sockjs-client'
-import { getToken } from '../utils/auth'
+import { getToken, getUser } from '../utils/auth'
+import { WS_GATEWAY_URL } from '../api/config'
 
 // Подписка на push-уведомления от notification-service.
 // onCreated(list)  — приходит после создания (массив Notification)
-// onAllRead()      — приходит после mark-all-read
+// onAllRead()      — приходит после mark-all-read для текущего пользователя
 export const useNotificationSocket = (onCreated, onAllRead) => {
   const [connected, setConnected] = useState(false)
   const createdRef = useRef(onCreated)
@@ -20,8 +20,9 @@ export const useNotificationSocket = (onCreated, onAllRead) => {
       setConnected(false)
       return
     }
+    const username = getUser().username
     const client = new Client({
-      webSocketFactory: () => new SockJS('http://localhost:8086/ws'),
+      brokerURL: `${WS_GATEWAY_URL}/ws-notifications`,
       connectHeaders: { Authorization: `Bearer ${token}` },
       onConnect: () => {
         setConnected(true)
@@ -31,9 +32,11 @@ export const useNotificationSocket = (onCreated, onAllRead) => {
             createdRef.current && createdRef.current(Array.isArray(data) ? data : [data])
           } catch (e) {}
         })
-        client.subscribe('/topic/notifications/read-all', () => {
-          allReadRef.current && allReadRef.current()
-        })
+        if (username) {
+          client.subscribe(`/topic/notifications/read-all/${username}`, () => {
+            allReadRef.current && allReadRef.current()
+          })
+        }
       },
       onDisconnect: () => setConnected(false),
       onWebSocketClose: () => setConnected(false),

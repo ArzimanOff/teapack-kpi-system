@@ -7,6 +7,7 @@ import { SearchOutlined, ReloadOutlined, DownloadOutlined } from '@ant-design/ic
 import { getReportsByLine, getReportByShift, generateReport, exportShiftCsv } from '../../api/reports'
 import { getKpiByShift } from '../../api/kpi'
 import { useLines } from '../../hooks/useLines'
+import KpiMetricLabel from '../../components/KpiMetricLabel'
 
 const { Title } = Typography
 
@@ -71,7 +72,7 @@ function ReportsPage() {
     { title: 'ID смены', dataIndex: 'shiftId', key: 'shiftId' },
     { title: 'Линия', dataIndex: 'lineId', key: 'lineId' },
     {
-      title: 'OEE', dataIndex: 'oee', key: 'oee',
+      title: <KpiMetricLabel metricKey="oee" label="OEE" />, dataIndex: 'oee', key: 'oee',
       render: v => v ? `${(v * 100).toFixed(1)}%` : '—'
     },
     {
@@ -132,24 +133,24 @@ function ReportsPage() {
       {selectedKpi && (
         <Card title={`Детали смены #${selectedKpi.shiftId}`}>
           <Row gutter={16}>
-            <Col span={6}><Statistic title="OEE" value={`${(selectedKpi.oee * 100).toFixed(2)}%`} /></Col>
-            <Col span={6}><Statistic title="Доступность" value={`${(selectedKpi.availability * 100).toFixed(2)}%`} /></Col>
-            <Col span={6}><Statistic title="Производительность" value={`${(selectedKpi.performance * 100).toFixed(2)}%`} /></Col>
-            <Col span={6}><Statistic title="Качество" value={`${(selectedKpi.quality * 100).toFixed(2)}%`} /></Col>
+            <Col span={6}><Statistic title={<KpiMetricLabel metricKey="oee" label="OEE" />} value={`${(selectedKpi.oee * 100).toFixed(2)}%`} /></Col>
+            <Col span={6}><Statistic title={<KpiMetricLabel metricKey="availability" label="Доступность" />} value={`${(selectedKpi.availability * 100).toFixed(2)}%`} /></Col>
+            <Col span={6}><Statistic title={<KpiMetricLabel metricKey="performance" label="Производительность" />} value={`${(selectedKpi.performance * 100).toFixed(2)}%`} /></Col>
+            <Col span={6}><Statistic title={<KpiMetricLabel metricKey="quality" label="Качество" />} value={`${(selectedKpi.quality * 100).toFixed(2)}%`} /></Col>
           </Row>
           <Divider />
           <Row gutter={16}>
             <Col span={6}><Statistic title="Выпуск" value={selectedKpi.totalOutput} suffix="шт" /></Col>
-            <Col span={6}><Statistic title="Брак" value={selectedKpi.scrapCount} suffix="шт" /></Col>
-            <Col span={6}><Statistic title="Простой" value={`${Number(selectedKpi.downtime).toFixed(1)} мин`} /></Col>
-            <Col span={6}><Statistic title="Выполнение плана" value={`${(selectedKpi.planFulfillment * 100).toFixed(1)}%`} /></Col>
+            <Col span={6}><Statistic title={<KpiMetricLabel metricKey="scrapRate" label="Брак" />} value={selectedKpi.scrapCount} suffix="шт" /></Col>
+            <Col span={6}><Statistic title={<KpiMetricLabel metricKey="downtime" label="Простой" />} value={`${Number(selectedKpi.downtime).toFixed(1)} мин`} /></Col>
+            <Col span={6}><Statistic title={<KpiMetricLabel metricKey="planFulfillment" label="Выполнение плана" />} value={`${(selectedKpi.planFulfillment * 100).toFixed(1)}%`} /></Col>
           </Row>
           <Divider />
           <Row gutter={16}>
-            <Col span={6}><Statistic title="Плановое время" value={`${selectedKpi.plannedTime} мин`} /></Col>
-            <Col span={6}><Statistic title="Рабочее время" value={`${selectedKpi.operatingTime} мин`} /></Col>
-            <Col span={6}><Statistic title="Скорость потерь" value={`${selectedKpi.speedLoss} ед/мин`} /></Col>
-            <Col span={6}><Statistic title="Остановок" value={selectedKpi.numberOfStops} /></Col>
+            <Col span={6}><Statistic title={<KpiMetricLabel metricKey="plannedTime" label="Плановое время" />} value={`${selectedKpi.plannedTime} мин`} /></Col>
+            <Col span={6}><Statistic title={<KpiMetricLabel metricKey="operatingTime" label="Рабочее время" />} value={`${selectedKpi.operatingTime} мин`} /></Col>
+            <Col span={6}><Statistic title={<KpiMetricLabel metricKey="speedLoss" label="Скорость потерь" />} value={`${selectedKpi.speedLoss} ед/мин`} /></Col>
+            <Col span={6}><Statistic title={<KpiMetricLabel metricKey="numberOfStops" label="Остановок" />} value={selectedKpi.numberOfStops} /></Col>
           </Row>
         </Card>
       )}

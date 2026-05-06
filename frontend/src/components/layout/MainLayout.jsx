@@ -15,6 +15,8 @@ import {
   TeamOutlined,
   AuditOutlined,
   ExperimentOutlined,
+  SlidersOutlined,
+  BookOutlined,
 } from '@ant-design/icons'
 import { clearAuth, getUser, getRole, hasRole } from '../../utils/auth'
 import { ROUTE_ACCESS } from '../../constants/access'
@@ -43,11 +45,13 @@ function MainLayout() {
     { key: '/shifts/active',  icon: <ThunderboltOutlined />, label: 'Активные смены' },
     { key: '/shifts/history', icon: <HistoryOutlined />,     label: 'История смен' },
     { key: '/reports',        icon: <FileTextOutlined />,  label: 'Отчёты' },
+    { key: '/thresholds',     icon: <SlidersOutlined />,   label: 'Пороги KPI' },
     { key: '/admin/lines',    icon: <SettingOutlined />,   label: 'Линии (админ)' },
     { key: '/admin/readings', icon: <WarningOutlined />,   label: 'Outlier-показания' },
     { key: '/admin/users',    icon: <TeamOutlined />,      label: 'Пользователи' },
     { key: '/admin/audit',    icon: <AuditOutlined />,     label: 'Журнал аудита' },
     { key: '/admin/emulator', icon: <ExperimentOutlined />, label: 'Эмулятор' },
+    { key: '/help/kpi',       icon: <BookOutlined />,      label: 'Справка KPI' },
   ]
   const menuItems = allMenuItems.filter(item => hasRole(ROUTE_ACCESS[item.key]))
 

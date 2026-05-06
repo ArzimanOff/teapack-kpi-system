@@ -15,7 +15,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -59,25 +58,9 @@ public class KpiController {
     @GetMapping("/history")
     @PreAuthorize("hasAnyRole('TECHNOLOGIST','ADMIN')")
     public ResponseEntity<Page<ShiftKpi>> getHistory(
-            @RequestParam(required = false) String lineId,
-            @RequestParam(required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dateFrom,
-            @RequestParam(required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dateTo,
-            @RequestParam(required = false) BigDecimal oeeMin,
-            @RequestParam(required = false) BigDecimal availabilityMin,
-            @RequestParam(required = false) BigDecimal performanceMin,
-            @RequestParam(required = false) BigDecimal qualityMin,
+            @ModelAttribute KpiHistoryFilterRequest filter,
             @PageableDefault(size = 20, sort = "calculatedAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
-        KpiHistoryFilterRequest filter = new KpiHistoryFilterRequest();
-        filter.setLineId(lineId);
-        filter.setDateFrom(dateFrom);
-        filter.setDateTo(dateTo);
-        filter.setOeeMin(oeeMin);
-        filter.setAvailabilityMin(availabilityMin);
-        filter.setPerformanceMin(performanceMin);
-        filter.setQualityMin(qualityMin);
         return ResponseEntity.ok(kpiService.findKpiHistoryPaged(filter, pageable));
     }
 }

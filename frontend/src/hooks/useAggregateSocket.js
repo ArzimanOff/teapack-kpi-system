@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Client } from '@stomp/stompjs'
-import SockJS from 'sockjs-client'
 import { getToken } from '../utils/auth'
+import { WS_GATEWAY_URL } from '../api/config'
 
 // Подписка на live-агрегаты смены: data-processing-service публикует
 // ShiftDataDto в /topic/aggregate/{shiftId} при каждом обновлении.
@@ -23,7 +23,7 @@ export const useAggregateSocket = (shiftId, onMessage) => {
     }
 
     const client = new Client({
-      webSocketFactory: () => new SockJS('http://localhost:8083/ws'),
+      brokerURL: `${WS_GATEWAY_URL}/ws-aggregate`,
       connectHeaders: { Authorization: `Bearer ${token}` },
       onConnect: () => {
         setConnected(true)

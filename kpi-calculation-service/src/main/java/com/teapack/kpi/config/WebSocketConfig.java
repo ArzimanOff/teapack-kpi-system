@@ -21,6 +21,11 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
+        // /ws-kpi — нативный WebSocket-эндпоинт (без SockJS), api-gateway
+        // прозрачно проксирует ws-upgrade, JWT едет в STOMP CONNECT-фрейме.
+        // /ws + SockJS оставлен для обратной совместимости (прямое подключение).
+        registry.addEndpoint("/ws-kpi")
+                .setAllowedOriginPatterns("*");
         registry.addEndpoint("/ws")
                 .setAllowedOriginPatterns("*")
                 .withSockJS();

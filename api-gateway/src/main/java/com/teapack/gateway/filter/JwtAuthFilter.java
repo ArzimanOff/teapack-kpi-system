@@ -21,11 +21,17 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
     @Value("${jwt.secret}")
     private String secret;
 
-    // Пути которые не требуют авторизации
+    // Пути которые не требуют авторизации на gateway-уровне.
+    // /ws-* — WebSocket/SockJS прокси: handshake идёт без Authorization-заголовка,
+    // авторизация делается на STOMP CONNECT внутри downstream-сервиса
+    // (StompAuthChannelInterceptor валидирует JWT из STOMP-фрейма).
     private static final List<String> PUBLIC_PATHS = List.of(
             "/api/auth/login",
             "/api/auth/register",
-            "/api/auth/refresh"
+            "/api/auth/refresh",
+            "/ws-kpi",
+            "/ws-aggregate",
+            "/ws-notifications"
     );
 
     @Override
