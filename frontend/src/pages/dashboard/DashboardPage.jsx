@@ -17,6 +17,7 @@ import { useAggregateSocket } from '../../hooks/useAggregateSocket'
 import { useLines } from '../../hooks/useLines'
 import KpiMetricLabel from '../../components/KpiMetricLabel'
 import DowntimeTimelineModal from '../../components/DowntimeTimelineModal'
+import RecommendationsWidget from '../../components/RecommendationsWidget'
 
 const { Title, Text } = Typography
 
@@ -216,7 +217,7 @@ function OnlineShiftPanel({ lineId, latestKpi, connected }) {
           <KpiGauge metricKey="quality" title="Качество (live)" value={quality} threshold={0.95} />
         </Col>
         <Col span={6}>
-          <KpiGauge metricKey="performance" title="Производительность (оценка)" value={performance} threshold={0.75} />
+          <KpiGauge metricKey="performance" title="Производительность" value={performance} threshold={0.75} />
         </Col>
         <Col span={6}>
           <KpiGauge metricKey="planFulfillment" title="Выполнение плана" value={planFulfillment} threshold={0.85} />
@@ -505,6 +506,10 @@ function DashboardPage() {
           </Col>
         </Row>
       </Row>
+
+      <div style={{ marginBottom: 16 }}>
+        <RecommendationsWidget lineId={selectedLine} limit={3} />
+      </div>
 
       <Tabs
         activeKey={activeTab}

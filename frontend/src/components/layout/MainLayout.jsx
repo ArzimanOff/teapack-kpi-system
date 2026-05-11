@@ -18,6 +18,7 @@ import {
   SlidersOutlined,
   BookOutlined,
   DiffOutlined,
+  BulbOutlined,
 } from '@ant-design/icons'
 import { clearAuth, getUser, getRole, hasRole } from '../../utils/auth'
 import { ROUTE_ACCESS } from '../../constants/access'
@@ -32,6 +33,10 @@ const roleLabels = {
   ROLE_TECHNOLOGIST: 'Технолог',
 }
 
+const SIDER_BG = '#001529'
+const SIDER_WIDTH = 200
+const SIDER_COLLAPSED_WIDTH = 80
+
 function MainLayout() {
   const [collapsed, setCollapsed] = useState(false)
   const navigate = useNavigate()
@@ -41,6 +46,7 @@ function MainLayout() {
 
   const allMenuItems = [
     { key: '/dashboard',      icon: <DashboardOutlined />, label: 'Дашборд' },
+    { key: '/recommendations', icon: <BulbOutlined />,     label: 'Рекомендации' },
     { key: '/operator',       icon: <ControlOutlined />,   label: 'Оператор' },
     { key: '/shifts/planned', icon: <CalendarOutlined />,    label: 'Запланированные смены' },
     { key: '/shifts/active',  icon: <ThunderboltOutlined />, label: 'Активные смены' },
@@ -62,31 +68,69 @@ function MainLayout() {
     navigate('/login')
   }
 
+  const siderWidth = collapsed ? SIDER_COLLAPSED_WIDTH : SIDER_WIDTH
+
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <Sider collapsible collapsed={collapsed} onCollapse={setCollapsed}
-        style={{ background: '#001529' }}>
+      <Sider
+        collapsible
+        collapsed={collapsed}
+        onCollapse={setCollapsed}
+        width={SIDER_WIDTH}
+        collapsedWidth={SIDER_COLLAPSED_WIDTH}
+        style={{
+          background: SIDER_BG,
+          position: 'fixed',
+          insetInlineStart: 0,
+          top: 0,
+          bottom: 0,
+          height: '100vh',
+          zIndex: 100,
+          boxShadow: '2px 0 8px rgba(0,0,0,0.15)',
+        }}
+      >
         <div style={{
-          height: 64, display: 'flex', alignItems: 'center',
-          justifyContent: 'center', color: 'white', fontWeight: 'bold',
-          fontSize: collapsed ? 12 : 16, padding: '0 8px'
+          display: 'flex',
+          flexDirection: 'column',
+          height: 'calc(100vh - 48px)', // 48px — высота AntD trigger
         }}>
-          {collapsed ? 'TP' : 'TeaPack KPI'}
+          <div style={{
+            height: 64, flexShrink: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: 'white', fontWeight: 'bold',
+            fontSize: collapsed ? 12 : 16, padding: '0 8px',
+            background: SIDER_BG,
+            letterSpacing: collapsed ? 0 : 1,
+          }}>
+            {collapsed ? 'TP' : 'TeaPack KPI'}
+          </div>
+          <div style={{
+            flex: 1,
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            scrollbarWidth: 'thin',
+          }}>
+            <Menu
+              theme="dark"
+              mode="inline"
+              style={{ background: SIDER_BG, borderInlineEnd: 0 }}
+              selectedKeys={[location.pathname]}
+              items={menuItems}
+              onClick={({ key }) => navigate(key)}
+            />
+          </div>
         </div>
-        <Menu
-          theme="dark"
-          mode="inline"
-          selectedKeys={[location.pathname]}
-          items={menuItems}
-          onClick={({ key }) => navigate(key)}
-        />
       </Sider>
-      <Layout>
+      <Layout style={{
+        marginInlineStart: siderWidth,
+        transition: 'margin-inline-start 0.2s',
+      }}>
         <Header style={{
           background: '#fff', padding: '0 24px',
           display: 'flex', alignItems: 'center',
           justifyContent: 'space-between',
-          boxShadow: '0 1px 4px rgba(0,0,0,0.1)'
+          boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
+          position: 'sticky', top: 0, zIndex: 50,
         }}>
           <Text strong style={{ fontSize: 16 }}>
             Система мониторинга производственного участка

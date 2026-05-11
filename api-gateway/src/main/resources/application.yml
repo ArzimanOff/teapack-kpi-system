@@ -31,7 +31,7 @@ spring:
         - id: kpi-calculation
           uri: http://localhost:8084
           predicates:
-            - Path=/api/kpi/**
+            - Path=/api/kpi/**,/api/recommendations/**
           filters:
             - StripPrefix=0
 

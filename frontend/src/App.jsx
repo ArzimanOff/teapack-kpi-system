@@ -21,6 +21,7 @@ const AuditPage          = lazy(() => import('./pages/admin/AuditPage'))
 const EmulatorAdminPage  = lazy(() => import('./pages/admin/EmulatorAdminPage'))
 const ThresholdsPage     = lazy(() => import('./pages/thresholds/ThresholdsPage'))
 const KpiHelpPage        = lazy(() => import('./pages/help/KpiHelpPage'))
+const RecommendationsPage = lazy(() => import('./pages/recommendations/RecommendationsPage'))
 
 const PrivateRoute = ({ children }) => {
   return isAuthenticated() ? children : <Navigate to="/login" />
@@ -62,6 +63,7 @@ function App() {
         <Route path="admin/emulator" element={guarded('/admin/emulator', <EmulatorAdminPage />)} />
         <Route path="thresholds" element={guarded('/thresholds', <ThresholdsPage />)} />
         <Route path="help/kpi" element={guarded('/help/kpi', <KpiHelpPage />)} />
+        <Route path="recommendations" element={guarded('/recommendations', <RecommendationsPage />)} />
       </Route>
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>
