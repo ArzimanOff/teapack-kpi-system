@@ -16,6 +16,7 @@ import { useWebSocket } from '../../hooks/useWebSocket'
 import { useAggregateSocket } from '../../hooks/useAggregateSocket'
 import { useLines } from '../../hooks/useLines'
 import KpiMetricLabel from '../../components/KpiMetricLabel'
+import DowntimeTimelineModal from '../../components/DowntimeTimelineModal'
 
 const { Title, Text } = Typography
 
@@ -51,6 +52,7 @@ function OnlineShiftPanel({ lineId, latestKpi, connected }) {
   const [loading, setLoading] = useState(false)
   const [closing, setClosing] = useState(false)
   const [error, setError] = useState(null)
+  const [downtimeOpen, setDowntimeOpen] = useState(false)
 
   const handleCloseShift = () => {
     if (!shift?.id) return
@@ -184,9 +186,30 @@ function OnlineShiftPanel({ lineId, latestKpi, connected }) {
           <Card><Statistic title="Брак" value={scrap} suffix="шт" /></Card>
         </Col>
         <Col span={6}>
-          <Card><Statistic title="Простой" value={downtime.toFixed(1)} suffix="мин" /></Card>
+          <Card
+            hoverable
+            onClick={() => setDowntimeOpen(true)}
+            style={{ cursor: 'pointer' }}
+          >
+            <Statistic
+              title={
+                <Space size={4}>
+                  <KpiMetricLabel metricKey="downtime" label="Простой" />
+                  <Tag color="blue" style={{ fontSize: 10, padding: '0 4px' }}>детали</Tag>
+                </Space>
+              }
+              value={downtime.toFixed(1)}
+              suffix="мин"
+            />
+          </Card>
         </Col>
       </Row>
+
+      <DowntimeTimelineModal
+        open={downtimeOpen}
+        shiftId={shift?.id}
+        onClose={() => setDowntimeOpen(false)}
+      />
 
       <Row gutter={16} style={{ marginBottom: 16 }}>
         <Col span={6}>
@@ -246,6 +269,7 @@ function LineSummaryPanel({ lineId }) {
   const [summary, setSummary] = useState(null)
   const [loading, setLoading] = useState(false)
   const [notifications, setNotifications] = useState([])
+  const [downtimeShiftId, setDowntimeShiftId] = useState(null)
 
   useEffect(() => {
     if (!lineId) {
@@ -311,6 +335,20 @@ function LineSummaryPanel({ lineId }) {
     { title: <KpiMetricLabel metricKey="quality" label="Qual" />, dataIndex: 'quality', width: 90, render: fmtPct },
     { title: 'Выпуск', dataIndex: 'totalOutput', width: 90 },
     { title: <KpiMetricLabel metricKey="scrapRate" label="Брак" />, dataIndex: 'scrapCount', width: 80 },
+    {
+      title: '',
+      key: 'actions',
+      width: 110,
+      render: (_, row) => (
+        <Button
+          size="small"
+          type="link"
+          onClick={() => setDowntimeShiftId(row.shiftId)}
+        >
+          Простои
+        </Button>
+      ),
+    },
   ]
 
   const notifColumns = [
@@ -415,6 +453,12 @@ function LineSummaryPanel({ lineId }) {
           />
         </Card>
       )}
+
+      <DowntimeTimelineModal
+        open={downtimeShiftId != null}
+        shiftId={downtimeShiftId}
+        onClose={() => setDowntimeShiftId(null)}
+      />
     </>
   )
 }

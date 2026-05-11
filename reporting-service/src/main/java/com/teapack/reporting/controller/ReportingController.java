@@ -2,6 +2,7 @@ package com.teapack.reporting.controller;
 
 import com.teapack.reporting.entity.Report;
 import com.teapack.reporting.service.CsvReportService;
+import com.teapack.reporting.service.PdfReportService;
 import com.teapack.reporting.service.ReportingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
@@ -19,6 +20,7 @@ public class ReportingController {
 
     private final ReportingService reportingService;
     private final CsvReportService csvReportService;
+    private final PdfReportService pdfReportService;
 
     // Без @PreAuthorize: эндпоинт зовётся из kpi-calculation Feign'ом при close смены.
     // Внешний доступ через gateway всё равно требует валидный JWT.
@@ -47,6 +49,17 @@ public class ReportingController {
         headers.setContentType(MediaType.parseMediaType("text/csv;charset=UTF-8"));
         headers.setContentDispositionFormData("attachment",
                 "shift-" + shiftId + "-report.csv");
+        return ResponseEntity.ok().headers(headers).body(body);
+    }
+
+    @GetMapping(value = "/{shiftId}/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
+    @PreAuthorize("hasAnyRole('TECHNOLOGIST','ADMIN')")
+    public ResponseEntity<byte[]> exportShiftPdf(@PathVariable Long shiftId) {
+        byte[] body = pdfReportService.renderShiftReport(shiftId);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDispositionFormData("attachment",
+                "shift-" + shiftId + "-report.pdf");
         return ResponseEntity.ok().headers(headers).body(body);
     }
 }

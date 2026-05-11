@@ -17,6 +17,7 @@ import {
   ExperimentOutlined,
   SlidersOutlined,
   BookOutlined,
+  DiffOutlined,
 } from '@ant-design/icons'
 import { clearAuth, getUser, getRole, hasRole } from '../../utils/auth'
 import { ROUTE_ACCESS } from '../../constants/access'
@@ -45,6 +46,7 @@ function MainLayout() {
     { key: '/shifts/active',  icon: <ThunderboltOutlined />, label: 'Активные смены' },
     { key: '/shifts/history', icon: <HistoryOutlined />,     label: 'История смен' },
     { key: '/reports',        icon: <FileTextOutlined />,  label: 'Отчёты' },
+    { key: '/reports/compare', icon: <DiffOutlined />,     label: 'Сравнение смен' },
     { key: '/thresholds',     icon: <SlidersOutlined />,   label: 'Пороги KPI' },
     { key: '/admin/lines',    icon: <SettingOutlined />,   label: 'Линии (админ)' },
     { key: '/admin/readings', icon: <WarningOutlined />,   label: 'Outlier-показания' },

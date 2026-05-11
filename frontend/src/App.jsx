@@ -10,6 +10,7 @@ import { ROUTE_ACCESS } from './constants/access'
 const DashboardPage      = lazy(() => import('./pages/dashboard/DashboardPage'))
 const OperatorPage       = lazy(() => import('./pages/operator/OperatorPage'))
 const ReportsPage        = lazy(() => import('./pages/reports/ReportsPage'))
+const CompareShiftsPage  = lazy(() => import('./pages/reports/CompareShiftsPage'))
 const PlannedShiftsPage  = lazy(() => import('./pages/shifts/PlannedShiftsPage'))
 const ActiveShiftsPage   = lazy(() => import('./pages/shifts/ActiveShiftsPage'))
 const ShiftHistoryPage   = lazy(() => import('./pages/shifts/ShiftHistoryPage'))
@@ -53,6 +54,7 @@ function App() {
         <Route path="shifts/active" element={guarded('/shifts/active', <ActiveShiftsPage />)} />
         <Route path="shifts/history" element={guarded('/shifts/history', <ShiftHistoryPage />)} />
         <Route path="reports" element={guarded('/reports', <ReportsPage />)} />
+        <Route path="reports/compare" element={guarded('/reports/compare', <CompareShiftsPage />)} />
         <Route path="admin/lines" element={guarded('/admin/lines', <LinesAdminPage />)} />
         <Route path="admin/readings" element={guarded('/admin/readings', <InvalidReadingsPage />)} />
         <Route path="admin/users" element={guarded('/admin/users', <UsersAdminPage />)} />

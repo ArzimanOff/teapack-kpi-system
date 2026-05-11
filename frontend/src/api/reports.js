@@ -11,3 +11,6 @@ export const generateReport = (shiftId) =>
 
 export const exportShiftCsv = (shiftId) =>
   client.get(`/api/reports/${shiftId}/csv`, { responseType: 'blob' })
+
+export const exportShiftPdf = (shiftId) =>
+  client.get(`/api/reports/${shiftId}/pdf`, { responseType: 'blob' })

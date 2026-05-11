@@ -90,6 +90,13 @@ public class ShiftController {
         return ResponseEntity.ok(shiftService.getShiftAggregate(shiftId));
     }
 
+    // Без @PreAuthorize: используется внутренним Feign из reporting-service.
+    // Внешний доступ через gateway всё равно требует валидный JWT.
+    @GetMapping("/{shiftId}/downtimes")
+    public ResponseEntity<List<DowntimeEvent>> getDowntimes(@PathVariable Long shiftId) {
+        return ResponseEntity.ok(shiftService.getDowntimeEvents(shiftId));
+    }
+
     @GetMapping("/line/{lineId}")
     @PreAuthorize("hasAnyRole('OPERATOR','TECHNOLOGIST','ADMIN')")
     public ResponseEntity<List<Shift>> getShiftsByLine(@PathVariable String lineId) {

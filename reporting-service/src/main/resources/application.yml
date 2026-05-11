@@ -30,6 +30,15 @@ spring:
 kpi-calculation:
   url: http://localhost:8084
 
+data-processing:
+  url: http://localhost:8083
+
+# Шрифт для PDF-отчётов. Можно переопределить через REPORT_FONT_PATH env.
+# Если файл не найден, PDF будет сгенерирован стандартным шрифтом (без кириллицы).
+report:
+  font-path: ${REPORT_FONT_PATH:C:/Windows/Fonts/arial.ttf}
+  font-path-bold: ${REPORT_FONT_PATH_BOLD:C:/Windows/Fonts/arialbd.ttf}
+
 jwt:
   secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
 

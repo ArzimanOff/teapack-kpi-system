@@ -3,11 +3,12 @@ import {
   Card, Select, Button, Table, Typography,
   Row, Col, Statistic, Tag, Space, Divider, message
 } from 'antd'
-import { SearchOutlined, ReloadOutlined, DownloadOutlined } from '@ant-design/icons'
-import { getReportsByLine, getReportByShift, generateReport, exportShiftCsv } from '../../api/reports'
+import { SearchOutlined, ReloadOutlined, DownloadOutlined, FilePdfOutlined } from '@ant-design/icons'
+import { getReportsByLine, getReportByShift, generateReport, exportShiftCsv, exportShiftPdf } from '../../api/reports'
 import { getKpiByShift } from '../../api/kpi'
 import { useLines } from '../../hooks/useLines'
 import KpiMetricLabel from '../../components/KpiMetricLabel'
+import DowntimeTimelineModal from '../../components/DowntimeTimelineModal'
 
 const { Title } = Typography
 
@@ -17,6 +18,7 @@ function ReportsPage() {
   const [reports, setReports] = useState([])
   const [selectedKpi, setSelectedKpi] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [downtimeShiftId, setDowntimeShiftId] = useState(null)
 
   useEffect(() => {
     if (!lineId && lines.length > 0) setLineId(lines[0].code)
@@ -52,19 +54,32 @@ function ReportsPage() {
     await loadDetail(shiftId)
   }
 
-  const handleDownload = async (shiftId) => {
+  const triggerDownload = (blob, mime, filename) => {
+    const url = window.URL.createObjectURL(new Blob([blob], { type: mime }))
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    window.URL.revokeObjectURL(url)
+  }
+
+  const handleDownloadCsv = async (shiftId) => {
     try {
       const res = await exportShiftCsv(shiftId)
-      const url = window.URL.createObjectURL(new Blob([res.data], { type: 'text/csv' }))
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `shift-${shiftId}-report.csv`
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
-      window.URL.revokeObjectURL(url)
+      triggerDownload(res.data, 'text/csv', `shift-${shiftId}-report.csv`)
     } catch (e) {
-      message.error('Не удалось скачать отчёт')
+      message.error('Не удалось скачать CSV-отчёт')
+    }
+  }
+
+  const handleDownloadPdf = async (shiftId) => {
+    try {
+      const res = await exportShiftPdf(shiftId)
+      triggerDownload(res.data, 'application/pdf', `shift-${shiftId}-report.pdf`)
+    } catch (e) {
+      message.error('Не удалось скачать PDF-отчёт')
     }
   }
 
@@ -95,8 +110,12 @@ function ReportsPage() {
             Перегенерировать
           </Button>
           <Button size="small" icon={<DownloadOutlined />}
-            onClick={() => handleDownload(record.shiftId)}>
+            onClick={() => handleDownloadCsv(record.shiftId)}>
             CSV
+          </Button>
+          <Button size="small" type="primary" icon={<FilePdfOutlined />}
+            onClick={() => handleDownloadPdf(record.shiftId)}>
+            PDF
           </Button>
         </Space>
       )
@@ -130,6 +149,12 @@ function ReportsPage() {
         style={{ marginBottom: 24 }}
       />
 
+      <DowntimeTimelineModal
+        open={downtimeShiftId != null}
+        shiftId={downtimeShiftId}
+        onClose={() => setDowntimeShiftId(null)}
+      />
+
       {selectedKpi && (
         <Card title={`Детали смены #${selectedKpi.shiftId}`}>
           <Row gutter={16}>
@@ -142,7 +167,25 @@ function ReportsPage() {
           <Row gutter={16}>
             <Col span={6}><Statistic title="Выпуск" value={selectedKpi.totalOutput} suffix="шт" /></Col>
             <Col span={6}><Statistic title={<KpiMetricLabel metricKey="scrapRate" label="Брак" />} value={selectedKpi.scrapCount} suffix="шт" /></Col>
-            <Col span={6}><Statistic title={<KpiMetricLabel metricKey="downtime" label="Простой" />} value={`${Number(selectedKpi.downtime).toFixed(1)} мин`} /></Col>
+            <Col span={6}>
+              <Card
+                hoverable
+                size="small"
+                onClick={() => setDowntimeShiftId(selectedKpi.shiftId)}
+                style={{ cursor: 'pointer', padding: 0 }}
+                bodyStyle={{ padding: 12 }}
+              >
+                <Statistic
+                  title={
+                    <Space size={4}>
+                      <KpiMetricLabel metricKey="downtime" label="Простой" />
+                      <Tag color="blue" style={{ fontSize: 10, padding: '0 4px' }}>детали</Tag>
+                    </Space>
+                  }
+                  value={`${Number(selectedKpi.downtime).toFixed(1)} мин`}
+                />
+              </Card>
+            </Col>
             <Col span={6}><Statistic title={<KpiMetricLabel metricKey="planFulfillment" label="Выполнение плана" />} value={`${(selectedKpi.planFulfillment * 100).toFixed(1)}%`} /></Col>
           </Row>
           <Divider />

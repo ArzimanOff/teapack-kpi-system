@@ -21,6 +21,9 @@ export const getShiftAggregate = (shiftId) =>
 export const getShiftData = (shiftId) =>
   client.get(`/api/shifts/${shiftId}/data`)
 
+export const getShiftDowntimes = (shiftId) =>
+  client.get(`/api/shifts/${shiftId}/downtimes`)
+
 export const getShiftsByLine = (lineId) =>
   client.get(`/api/shifts/line/${lineId}`)
 
